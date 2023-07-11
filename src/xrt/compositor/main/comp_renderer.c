@@ -31,6 +31,7 @@
 #include "main/comp_layer_renderer.h"
 #include "main/comp_frame.h"
 #include "main/comp_mirror_to_debug_gui.h"
+#include <vulkan/vulkan_core.h>
 
 #ifdef XRT_FEATURE_WINDOW_PEEK
 #include "main/comp_window_peek.h"
@@ -48,6 +49,7 @@
 #include <math.h>
 #include <inttypes.h>
 
+#include "../drivers/illixr/illixr_component.h"
 
 /*
  *
@@ -265,46 +267,47 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * Update
 	 */
 
-	struct render_gfx_mesh_ubo_data distortion_data[2] = {
-	    {
-	        .vertex_rot = l_v->rot,
-	        .post_transform = src_norm_rects[0],
-	    },
-	    {
-	        .vertex_rot = r_v->rot,
-	        .post_transform = src_norm_rects[1],
-	    },
-	};
+	// struct render_gfx_mesh_ubo_data distortion_data[2] = {
+	//     {
+	//         .vertex_rot = l_v->rot,
+	//         .post_transform = src_norm_rects[0],
+	//     },
+	//     {
+	//         .vertex_rot = r_v->rot,
+	//         .post_transform = src_norm_rects[1],
+	//     },
+	// };
 
-	const struct xrt_matrix_2x2 rotation_90_cw = {{
-	    .vecs =
-	        {
-	            {0, 1},
-	            {-1, 0},
-	        },
-	}};
+	// const struct xrt_matrix_2x2 rotation_90_cw = {{
+	//     .vecs =
+	//         {
+	//             {0, 1},
+	//             {-1, 0},
+	//         },
+	// }};
 
-	if (pre_rotate) {
-		m_mat2x2_multiply(&distortion_data[0].vertex_rot,  //
-		                  &rotation_90_cw,                 //
-		                  &distortion_data[0].vertex_rot); //
-		m_mat2x2_multiply(&distortion_data[1].vertex_rot,  //
-		                  &rotation_90_cw,                 //
-		                  &distortion_data[1].vertex_rot); //
-	}
+	// if (pre_rotate) {
+	// 	m_mat2x2_multiply(&distortion_data[0].vertex_rot,  //
+	// 	                  &rotation_90_cw,                 //
+	// 	                  &distortion_data[0].vertex_rot); //
+	// 	m_mat2x2_multiply(&distortion_data[1].vertex_rot,  //
+	// 	                  &rotation_90_cw,                 //
+	// 	                  &distortion_data[1].vertex_rot); //
+	// }
 
-	render_gfx_update_distortion(rr,                   //
-	                             0,                    // view_index
-	                             src_samplers[0],      //
-	                             src_image_views[0],   //
-	                             &distortion_data[0]); //
+	// render_gfx_update_distortion(rr,                   //
+	//                              0,                    // view_index
+	//                              src_samplers[0],      //
+	//                              src_image_views[0],   //
+	//                              &distortion_data[0]); //
 
-	render_gfx_update_distortion(rr,                   //
-	                             1,                    // view_index
-	                             src_samplers[1],      //
-	                             src_image_views[1],   //
-	                             &distortion_data[1]); //
+	// render_gfx_update_distortion(rr,                   //
+	//                              1,                    // view_index
+	//                              src_samplers[1],      //
+	//                              src_image_views[1],   //
+	//                              &distortion_data[1]); //
 
+	illixr_tw_update_uniforms();
 
 	/*
 	 * Target
@@ -319,11 +322,13 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * Viewport one
 	 */
 
+	l_viewport_data.w *= 2;
 	render_gfx_begin_view(rr,                //
 	                      0,                 // view_index
 	                      &l_viewport_data); // viewport_data
 
-	render_gfx_distortion(rr);
+	// render_gfx_distortion(rr);
+	illixr_tw_record_command_buffer(rr->r->cmd, 0, 1);
 
 	render_gfx_end_view(rr);
 
@@ -332,11 +337,13 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * Viewport two
 	 */
 
+	r_viewport_data.w *= 2;
 	render_gfx_begin_view(rr,                //
 	                      1,                 // view_index
 	                      &r_viewport_data); // viewport_data
 
-	render_gfx_distortion(rr);
+	// render_gfx_distortion(rr);
+	illixr_tw_record_command_buffer(rr->r->cmd, 0, 1);
 
 	render_gfx_end_view(rr);
 
@@ -530,6 +537,14 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 	renderer_create_renderings_and_fences(r);
 
 	assert(r->buffer_count != 0);
+
+	// Initialize ILLIXR timewarp
+	if (strcmp(r->c->xdev->str, "ILLIXR") == 0) {
+		VkImageView buffers[2];
+		buffers[0] = r->lr->framebuffers[0].view;
+		buffers[1] = r->lr->framebuffers[1].view;
+		illixr_initialize_timewarp(r->lr->render_pass, 0, buffers, 1);
+	}
 
 	return true;
 }
@@ -901,6 +916,9 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		return;
 	}
 
+
+	/* Fast path disabled for ILLIXR timewarp integration */
+	assert(false);
 
 	/*
 	 * Fast path.
