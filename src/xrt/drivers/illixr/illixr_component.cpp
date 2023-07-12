@@ -38,7 +38,9 @@ public:
 	    : plugin{name_, pb_}
 		, sb{pb->lookup_impl<switchboard>()}
 		, sb_pose{pb->lookup_impl<pose_prediction>()}
+		, sb_clock{pb->lookup_impl<RelativeClock>()}
 		, ds{std::make_shared<monado_vulkan_display_sink>()}
+		, _m_vsync{sb->get_writer<switchboard::event_wrapper<time_point>>("vsync_estimate")}
 	{
 		pb_->register_impl<display_sink>(std::static_pointer_cast<display_sink>(ds));
 		sb_timewarp = pb_->lookup_impl<timewarp>();
@@ -46,9 +48,13 @@ public:
 
 	const std::shared_ptr<switchboard> sb;
 	const std::shared_ptr<pose_prediction> sb_pose;
+	const std::shared_ptr<RelativeClock> sb_clock;
 	std::shared_ptr<timewarp> sb_timewarp;
 
 	std::shared_ptr<display_sink> ds;
+	switchboard::writer<switchboard::event_wrapper<time_point>> _m_vsync;
+
+	pose_type last_pose;
 };
 
 static illixr_plugin *illixr_plugin_obj = nullptr;
@@ -72,6 +78,7 @@ illixr_read_pose()
 	struct xrt_pose ret;
 	const fast_pose_type fast_pose = illixr_plugin_obj->sb_pose->get_fast_pose();
 	const pose_type pose = fast_pose.pose;
+	illixr_plugin_obj->last_pose = pose;
 
 	ret.orientation.x = pose.orientation.x();
 	ret.orientation.y = pose.orientation.y();
@@ -107,10 +114,16 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 
 extern "C" void illixr_tw_update_uniforms() {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
-	illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->sb_pose->get_fast_pose());
+	illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->last_pose);
 }
 
 extern "C" void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, int buffer_ind, int left) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 	illixr_plugin_obj->sb_timewarp->record_command_buffer(commandBuffer, buffer_ind, left);
+}
+
+extern "C" void illixr_publish_vsync_estimate(uint64_t display_time_ns) {
+	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	auto relative_time = time_point{time_point{std::chrono::nanoseconds(display_time_ns)} - illixr_plugin_obj->sb_clock->start_time()};
+	illixr_plugin_obj->_m_vsync.put(illixr_plugin_obj->_m_vsync.allocate<switchboard::event_wrapper<time_point>>(relative_time));
 }

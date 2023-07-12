@@ -33,6 +33,7 @@
 #include <unistd.h>
 #endif
 
+#include "../drivers/illixr/illixr_component.h"
 
 /*
  *
@@ -461,6 +462,9 @@ multi_main_loop(struct multi_system_compositor *msc)
 		    &predicted_gpu_time_ns,        //
 		    &predicted_display_time_ns,    //
 		    &predicted_display_period_ns); //
+
+		// ILLIXR: publish predicted swap time to switchboard
+		illixr_publish_vsync_estimate(predicted_display_time_ns);
 
 		// Do this as soon as we have the new display time.
 		broadcast_timings_to_clients(msc, predicted_display_time_ns);
