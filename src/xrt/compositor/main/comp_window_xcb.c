@@ -16,10 +16,6 @@
 #include "xrt/xrt_compiler.h"
 #include "main/comp_window.h"
 
-// #ifdef XRT_BUILD_DRIVER_ILLIXR
-#include "../drivers/illixr/illixr_component.h"
-// #endif
-
 /*
  *
  * Private structs.
@@ -285,14 +281,6 @@ comp_window_xcb_init_swapchain(struct comp_target *ct, uint32_t width, uint32_t 
 		return false;
 	}
 
-	// check whether ILLIXR is present
-	if (strcmp(ct->c->xdev->str, "ILLIXR") != 0) {
-		return true;
-	}
-
-	// populate ILLIXR display service
-	struct vk_bundle* bundle = ct->c->nr.vk;
-	illixr_initialize_vulkan_display_service(bundle->instance, bundle->physical_device, bundle->device, bundle->queue, bundle->queue_family_index);
 	return true;
 }
 

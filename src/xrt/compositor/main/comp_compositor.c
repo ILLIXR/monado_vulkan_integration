@@ -78,6 +78,7 @@
 #include <unistd.h>
 #endif
 
+#include "../drivers/illixr/illixr_component.h"
 
 #define WINDOW_TITLE "Monado"
 
@@ -970,6 +971,15 @@ compositor_init_swapchain(struct comp_compositor *c)
 	if (comp_target_init_post_vulkan(c->target,                   //
 	                                 c->settings.preferred.width, //
 	                                 c->settings.preferred.height)) {
+										// check whether ILLIXR is present
+		if (strcmp(c->xdev->str, "ILLIXR") != 0) {
+			return true;
+		}
+
+		// populate ILLIXR display service
+		struct vk_bundle* bundle = c->nr.vk;
+		illixr_initialize_vulkan_display_service(bundle->instance, bundle->physical_device, bundle->device, bundle->queue, bundle->queue_family_index);
+
 		return true;
 	}
 

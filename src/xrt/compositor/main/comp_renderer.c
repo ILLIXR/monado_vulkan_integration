@@ -886,6 +886,9 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 	struct render_gfx_target_resources *rtr = &r->rtr_array[r->acquired_buffer];
 	bool one_projection_layer_fast_path = c->base.slot.one_projection_layer_fast_path;
 
+	// ILLIXR: disable fast path
+	one_projection_layer_fast_path = false;
+
 	// No fast path, standard layer renderer path.
 	if (!one_projection_layer_fast_path) {
 		// We mark here to include the layer rendering in the GPU time.
@@ -917,7 +920,7 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 	}
 
 
-	/* Fast path disabled for ILLIXR timewarp integration */
+	/* ILLIXR: Fast path disabled for ILLIXR warping integration */
 	assert(false);
 
 	/*
