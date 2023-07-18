@@ -385,6 +385,8 @@ compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_t sy
 	 * to the distortion shader, so no need to use the layer renderer.
 	 */
 	bool fast_path = can_do_one_projection_layer_fast_path(c) && !c->mirroring_to_debug_gui && !c->peek;
+	// ILLIXR: disable fast path
+	fast_path = false;
 	c->base.slot.one_projection_layer_fast_path = fast_path;
 
 
