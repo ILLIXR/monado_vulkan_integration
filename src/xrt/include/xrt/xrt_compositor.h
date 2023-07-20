@@ -140,6 +140,7 @@ struct xrt_layer_projection_view_data
 
 	struct xrt_fov fov;
 	struct xrt_pose pose;
+	struct xrt_pose original_pose;
 };
 
 /*!

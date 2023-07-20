@@ -8,6 +8,7 @@
  * @ingroup oxr_main
  */
 
+#include "xrt/xrt_defines.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_config_build.h"
 #include "xrt/xrt_config_have.h"
@@ -981,8 +982,10 @@ submit_projection_layer(struct oxr_session *sess,
 	data.flags = flags;
 	data.stereo.l.fov = *l_fov;
 	data.stereo.l.pose = pose[0];
+	data.stereo.l.original_pose = *((struct xrt_pose*) &proj->views[0].pose);
 	data.stereo.r.fov = *r_fov;
 	data.stereo.r.pose = pose[1];
+	data.stereo.r.original_pose = *((struct xrt_pose*) &proj->views[1].pose);
 	fill_in_sub_image(scs[0], &proj->views[0].subImage, &data.stereo.l.sub);
 	fill_in_sub_image(scs[1], &proj->views[1].subImage, &data.stereo.r.sub);
 

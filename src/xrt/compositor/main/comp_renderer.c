@@ -307,7 +307,16 @@ renderer_build_rendering(struct comp_renderer *r,
 	//                              src_image_views[1],   //
 	//                              &distortion_data[1]); //
 
-	illixr_tw_update_uniforms();
+	// ILLIXR: get pose from projection layer
+	struct comp_render_layer *layer;
+	for (int i = 0; i < r->lr->layer_count; i++) {
+		layer = r->lr->layers[i];
+		if (layer->type == XRT_LAYER_STEREO_PROJECTION) {
+			break;
+		}
+	}
+
+	illixr_tw_update_uniforms(&layer->l_pose, &layer->r_pose);
 
 	/*
 	 * Target
@@ -1657,6 +1666,10 @@ comp_renderer_set_projection_layer(struct comp_renderer *r,
 	l->type = XRT_LAYER_STEREO_PROJECTION;
 	l->flags = data->flags;
 	l->view_space = (data->flags & XRT_LAYER_COMPOSITION_VIEW_SPACE_BIT) != 0;
+
+	// ILLIXR: pass render pose to layer renderer
+	l->l_pose = data->stereo.l.pose;
+	l->r_pose = data->stereo.r.pose;
 
 	l->transformation[0].offset = data->stereo.l.sub.rect.offset;
 	l->transformation[0].extent = data->stereo.l.sub.rect.extent;
