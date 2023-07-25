@@ -352,7 +352,7 @@ renderer_build_rendering(struct comp_renderer *r,
 	                      &r_viewport_data); // viewport_data
 
 	// render_gfx_distortion(rr);
-	illixr_tw_record_command_buffer(rr->r->cmd, 0, 1);
+	illixr_tw_record_command_buffer(rr->r->cmd, 0, 0);
 
 	render_gfx_end_view(rr);
 
