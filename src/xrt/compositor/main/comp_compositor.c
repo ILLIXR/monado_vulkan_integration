@@ -457,6 +457,8 @@ compositor_destroy(struct xrt_compositor *xc)
 
 	COMP_DEBUG(c, "COMP_DESTROY");
 
+	illixr_destroy_timewarp();
+
 	// Make sure we don't have anything to destroy.
 	comp_swapchain_shared_garbage_collect(&c->base.cscs);
 

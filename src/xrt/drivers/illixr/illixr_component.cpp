@@ -101,6 +101,11 @@ extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, Vk
 	illixr_plugin_obj->ds = ds;
 }
 
+extern "C" void illixr_destroy_timewarp() {
+	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	illixr_plugin_obj->sb_timewarp->destroy();
+}
+
 extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t subpass, VkImageView* buffer_pool, uint32_t num_buffers_per_eye) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 	std::cout << PREFIX << "Initializing timewarp" << std::endl;
