@@ -316,7 +316,11 @@ renderer_build_rendering(struct comp_renderer *r,
 		}
 	}
 
-	illixr_tw_update_uniforms(&layer->l_pose, &layer->r_pose);
+	if (layer) {
+		illixr_tw_update_uniforms(layer->l_pose, layer->r_pose);
+	} else {
+		printf("WARNING: no projection layer found\n");
+	}
 
 	/*
 	 * Target

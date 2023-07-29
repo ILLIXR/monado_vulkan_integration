@@ -54,6 +54,7 @@ public:
 	std::shared_ptr<display_sink> ds;
 	switchboard::writer<switchboard::event_wrapper<time_point>> _m_vsync;
 
+	pose_type last_pose;
 };
 
 static illixr_plugin *illixr_plugin_obj = nullptr;
@@ -115,18 +116,19 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 	illixr_plugin_obj->sb_timewarp->setup(render_pass, subpass, std::move(eye_views), false);
 }
 
-extern "C" void illixr_tw_update_uniforms(xrt_pose *l_pose, xrt_pose *r_pose) {
+extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 
 	pose_type pose {time_point{}, 
-					{(l_pose->position.x + r_pose->position.x) / 2, (l_pose->position.y + r_pose->position.y) / 2, (l_pose->position.z + r_pose->position.z) / 2},
-					{(l_pose->orientation.w), (l_pose->orientation.x), (l_pose->orientation.y), (l_pose->orientation.z)}
+					Eigen::Vector3f {(l_pose.position.x + r_pose.position.x) / 2, (l_pose.position.y + r_pose.position.y) / 2, (l_pose.position.z + r_pose.position.z) / 2},
+					Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
 					};
-	illixr_plugin_obj->sb_timewarp->update_uniforms(pose);
+	illixr_plugin_obj->last_pose = pose;
 }
 
 extern "C" void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, int buffer_ind, int left) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->last_pose);
 	illixr_plugin_obj->sb_timewarp->record_command_buffer(commandBuffer, buffer_ind, left);
 }
 
