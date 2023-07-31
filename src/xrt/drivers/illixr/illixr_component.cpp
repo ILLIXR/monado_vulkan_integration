@@ -78,7 +78,6 @@ illixr_read_pose()
 	struct xrt_pose ret;
 	const fast_pose_type fast_pose = illixr_plugin_obj->sb_pose->get_fast_pose();
 	const pose_type pose = fast_pose.pose;
-	illixr_plugin_obj->last_pose = pose;
 
 	ret.orientation.x = pose.orientation.x();
 	ret.orientation.y = pose.orientation.y();
@@ -103,6 +102,11 @@ extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, Vk
 	illixr_plugin_obj->ds = ds;
 }
 
+extern "C" void illixr_destroy_timewarp() {
+	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	illixr_plugin_obj->sb_timewarp->destroy();
+}
+
 extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t subpass, VkImageView* buffer_pool, uint32_t num_buffers_per_eye) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 	std::cout << PREFIX << "Initializing timewarp" << std::endl;
@@ -112,13 +116,19 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 	illixr_plugin_obj->sb_timewarp->setup(render_pass, subpass, std::move(eye_views), false);
 }
 
-extern "C" void illixr_tw_update_uniforms() {
+extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
-	illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->last_pose);
+
+	pose_type pose {time_point{}, 
+					Eigen::Vector3f {(l_pose.position.x + r_pose.position.x) / 2, (l_pose.position.y + r_pose.position.y) / 2, (l_pose.position.z + r_pose.position.z) / 2},
+					Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
+					};
+	illixr_plugin_obj->last_pose = pose;
 }
 
 extern "C" void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, int buffer_ind, int left) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->last_pose);
 	illixr_plugin_obj->sb_timewarp->record_command_buffer(commandBuffer, buffer_ind, left);
 }
 

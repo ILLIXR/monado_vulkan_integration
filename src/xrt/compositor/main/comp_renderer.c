@@ -307,7 +307,20 @@ renderer_build_rendering(struct comp_renderer *r,
 	//                              src_image_views[1],   //
 	//                              &distortion_data[1]); //
 
-	illixr_tw_update_uniforms();
+	// ILLIXR: get pose from projection layer
+	struct comp_render_layer *layer;
+	for (int i = 0; i < r->lr->layer_count; i++) {
+		layer = r->lr->layers[i];
+		if (layer->type == XRT_LAYER_STEREO_PROJECTION) {
+			break;
+		}
+	}
+
+	if (layer) {
+		illixr_tw_update_uniforms(layer->l_pose, layer->r_pose);
+	} else {
+		printf("WARNING: no projection layer found\n");
+	}
 
 	/*
 	 * Target
@@ -343,7 +356,7 @@ renderer_build_rendering(struct comp_renderer *r,
 	                      &r_viewport_data); // viewport_data
 
 	// render_gfx_distortion(rr);
-	illixr_tw_record_command_buffer(rr->r->cmd, 0, 1);
+	illixr_tw_record_command_buffer(rr->r->cmd, 0, 0);
 
 	render_gfx_end_view(rr);
 
@@ -886,6 +899,9 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 	struct render_gfx_target_resources *rtr = &r->rtr_array[r->acquired_buffer];
 	bool one_projection_layer_fast_path = c->base.slot.one_projection_layer_fast_path;
 
+	// ILLIXR: disable fast path
+	one_projection_layer_fast_path = false;
+
 	// No fast path, standard layer renderer path.
 	if (!one_projection_layer_fast_path) {
 		// We mark here to include the layer rendering in the GPU time.
@@ -917,7 +933,7 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 	}
 
 
-	/* Fast path disabled for ILLIXR timewarp integration */
+	/* ILLIXR: Fast path disabled for ILLIXR warping integration */
 	assert(false);
 
 	/*
@@ -1654,6 +1670,10 @@ comp_renderer_set_projection_layer(struct comp_renderer *r,
 	l->type = XRT_LAYER_STEREO_PROJECTION;
 	l->flags = data->flags;
 	l->view_space = (data->flags & XRT_LAYER_COMPOSITION_VIEW_SPACE_BIT) != 0;
+
+	// ILLIXR: pass render pose to layer renderer
+	l->l_pose = data->stereo.l.pose;
+	l->r_pose = data->stereo.r.pose;
 
 	l->transformation[0].offset = data->stereo.l.sub.rect.offset;
 	l->transformation[0].extent = data->stereo.l.sub.rect.extent;

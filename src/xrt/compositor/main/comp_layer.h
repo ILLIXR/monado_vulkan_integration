@@ -11,6 +11,7 @@
 
 #include "vk/vk_helpers.h"
 #include "comp_compositor.h"
+#include "xrt/xrt_defines.h"
 
 struct layer_transformation
 {
@@ -74,6 +75,8 @@ struct comp_render_layer
 
 	uint32_t transformation_ubo_binding;
 	uint32_t texture_binding;
+
+	struct xrt_pose l_pose, r_pose;
 };
 
 struct comp_render_layer *

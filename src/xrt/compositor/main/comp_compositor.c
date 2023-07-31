@@ -78,6 +78,7 @@
 #include <unistd.h>
 #endif
 
+#include "../drivers/illixr/illixr_component.h"
 
 #define WINDOW_TITLE "Monado"
 
@@ -384,6 +385,8 @@ compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_t sy
 	 * to the distortion shader, so no need to use the layer renderer.
 	 */
 	bool fast_path = can_do_one_projection_layer_fast_path(c) && !c->mirroring_to_debug_gui && !c->peek;
+	// ILLIXR: disable fast path
+	fast_path = false;
 	c->base.slot.one_projection_layer_fast_path = fast_path;
 
 
@@ -453,6 +456,8 @@ compositor_destroy(struct xrt_compositor *xc)
 	struct vk_bundle *vk = get_vk(c);
 
 	COMP_DEBUG(c, "COMP_DESTROY");
+
+	illixr_destroy_timewarp();
 
 	// Make sure we don't have anything to destroy.
 	comp_swapchain_shared_garbage_collect(&c->base.cscs);
@@ -970,6 +975,15 @@ compositor_init_swapchain(struct comp_compositor *c)
 	if (comp_target_init_post_vulkan(c->target,                   //
 	                                 c->settings.preferred.width, //
 	                                 c->settings.preferred.height)) {
+										// check whether ILLIXR is present
+		if (strcmp(c->xdev->str, "ILLIXR") != 0) {
+			return true;
+		}
+
+		// populate ILLIXR display service
+		struct vk_bundle* bundle = c->nr.vk;
+		illixr_initialize_vulkan_display_service(bundle->instance, bundle->physical_device, bundle->device, bundle->queue, bundle->queue_family_index);
+
 		return true;
 	}
 

@@ -273,17 +273,17 @@ calc_period(const struct pacing_app *pa)
 
 	// Calculate the using both values separately.
 	uint64_t period_ns = base_period_ns;
-	while (pa->app.cpu_time_ns > period_ns) {
-		period_ns += base_period_ns;
-	}
+	// while (pa->app.cpu_time_ns > period_ns) {
+	// 	period_ns += base_period_ns;
+	// }
 
-	while (pa->app.draw_time_ns > period_ns) {
-		period_ns += base_period_ns;
-	}
+	// while (pa->app.draw_time_ns > period_ns) {
+	// 	period_ns += base_period_ns;
+	// }
 
-	while (pa->app.wait_time_ns > period_ns) {
-		period_ns += base_period_ns;
-	}
+	// while (pa->app.wait_time_ns > period_ns) {
+	// 	period_ns += base_period_ns;
+	// }
 
 	return period_ns;
 }
@@ -306,9 +306,9 @@ predict_display_time(const struct pacing_app *pa, uint64_t now_ns, uint64_t peri
 	}
 
 	// Have to have enough time to perform app work.
-	while ((val - app_and_compositor_time_ns) <= now_ns) {
-		val += period_ns;
-	}
+	// while ((val - app_and_compositor_time_ns) <= now_ns) {
+	// 	val += period_ns;
+	// }
 
 	return val;
 }
@@ -449,8 +449,8 @@ pa_predict(struct u_pacing_app *upa,
 
 	size_t index = GET_INDEX_FROM_ID(pa, frame_id);
 	struct u_pa_frame *f = &pa->frames[index];
-	assert(f->frame_id == -1);
-	assert(f->state == U_PA_READY);
+	// assert(f->frame_id == -1);
+	// assert(f->state == U_PA_READY);
 
 	f->state = U_RT_PREDICTED;
 	f->frame_id = frame_id;
