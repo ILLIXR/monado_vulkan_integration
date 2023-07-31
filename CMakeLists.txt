@@ -98,6 +98,8 @@ find_package(
 		video
 		CONFIG
 	)
+include_directories(${OpenCV_INCLUDE_DIRS})
+
 find_package(Libusb1 MODULE)
 find_package(JPEG MODULE)
 find_package(realsense2 CONFIG)
