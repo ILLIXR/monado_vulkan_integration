@@ -182,11 +182,22 @@ if(XRT_HAVE_LINUX OR MINGW)
 	pkg_check_modules(SURVIVE IMPORTED_TARGET survive)
 endif()
 
+# ILLIXR
+set(ILLIXR_PATH
+		""
+		CACHE PATH "Path to ILLIXR headers"
+		)
+if(ILLIXR_PATH)
+	list(APPEND CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX}/lib/cmake")
+endif()
 # Find a external SLAM implementation
 set(EXTERNAL_SLAM_SYSTEMS kimera_vio basalt)
 foreach(slam_system IN LISTS EXTERNAL_SLAM_SYSTEMS)
 	if(PKGCONFIG_FOUND)
 		pkg_check_modules(${slam_system} ${slam_system})
+	endif()
+	if(NOT ${slam_system}_FOUND)
+		find_package(${slam_system} CONFIG)
 	endif()
 	if(${slam_system}_FOUND)
 		set(SLAM_NAME ${slam_system})
@@ -207,12 +218,6 @@ else()
 	set(OPENVR_FOUND off)
 	message(STATUS "OpenVR not found")
 endif()
-
-# ILLIXR
-set(ILLIXR_PATH
-    ""
-    CACHE PATH "Path to ILLIXR headers"
-	)
 
 # This one is named differently because that's what CTest uses
 option(BUILD_TESTING "Enable building of the test suite?" ON)
