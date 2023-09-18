@@ -4,6 +4,8 @@
 ###
 # Main code
 #
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads)
 
 add_library(
 	st_oxr STATIC
@@ -45,7 +47,7 @@ add_library(
 if(XRT_HAVE_VULKAN)
 	target_compile_definitions(st_oxr PRIVATE XR_USE_GRAPHICS_API_VULKAN)
 	target_sources(st_oxr PRIVATE oxr_session_gfx_vk.c oxr_swapchain_vk.c oxr_vulkan.c)
-	target_link_libraries(st_oxr PUBLIC Vulkan::Vulkan)
+	target_link_libraries(st_oxr PUBLIC Vulkan::Vulkan Threads::Threads)
 endif()
 
 if(XRT_HAVE_OPENGL)

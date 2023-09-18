@@ -158,10 +158,14 @@ target_include_directories(
 
 # Tracy
 if(XRT_HAVE_TRACY)
+	set(THREADS_PREFER_PTHREAD_FLAG ON)
+
+	find_package(Threads)
+
 	add_library(xrt-external-tracy STATIC tracy/TracyClient.cpp)
 	target_include_directories(
 		xrt-external-tracy SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/tracy
 		)
 	target_compile_definitions(xrt-external-tracy PRIVATE TRACY_ENABLE)
-	target_link_libraries(xrt-external-tracy PRIVATE ${CMAKE_DL_LIBS})
+	target_link_libraries(xrt-external-tracy PRIVATE ${CMAKE_DL_LIBS} PUBLIC Threads::Threads)
 endif()

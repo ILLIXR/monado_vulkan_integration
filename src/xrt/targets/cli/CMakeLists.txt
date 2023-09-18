@@ -3,6 +3,8 @@
 
 ######
 # Create a cli interface for Monado.
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads)
 
 add_executable(
 	cli_vk
@@ -29,6 +31,7 @@ set_target_properties(cli_vk PROPERTIES OUTPUT_NAME monado_vk-cli PREFIX "")
 
 target_link_libraries(
 	cli_vk
+		PUBLIC Threads::Threads
 	PRIVATE
 		aux_os
 		aux_os_ble

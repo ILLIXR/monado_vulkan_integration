@@ -1,5 +1,7 @@
 # Copyright 2019-2022, Collabora, Ltd.
 # SPDX-License-Identifier: BSL-1.0
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads)
 
 xrt_optimized_math_flags()
 
@@ -15,7 +17,7 @@ add_library(
 	)
 target_link_libraries(
 	aux_tracking
-	PUBLIC aux-includes xrt-external-cjson
+	PUBLIC aux-includes xrt-external-cjson Threads::Threads
 	PRIVATE
 		aux_math
 		aux_util
@@ -26,6 +28,10 @@ target_link_libraries(
 target_include_directories(aux_tracking SYSTEM PRIVATE ${EIGEN3_INCLUDE_DIR})
 
 if(XRT_HAVE_OPENCV)
+	set(THREADS_PREFER_PTHREAD_FLAG ON)
+
+	find_package(Threads)
+
 	target_sources(
 		aux_tracking
 		PRIVATE
@@ -52,7 +58,7 @@ if(XRT_HAVE_OPENCV)
 	target_include_directories(aux_tracking SYSTEM PRIVATE ${OpenCV_INCLUDE_DIRS})
 	target_link_libraries(
 		aux_tracking
-		PUBLIC ${OpenCV_LIBRARIES}
+		PUBLIC ${OpenCV_LIBRARIES} Threads::Threads
 		PRIVATE aux_util_sink
 		)
 	# t_euroc_recorder needs a Windows implementation of os_realtime_get_ns.
