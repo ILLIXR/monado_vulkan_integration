@@ -19,14 +19,15 @@
 #include "illixr/switchboard.hpp"
 #include "illixr/data_format.hpp"
 #include "illixr/pose_prediction.hpp"
-#include "illixr/vk_util/render_pass.hpp"
-#include "illixr/vk_util/display_sink.hpp"
+#include "illixr/vk/render_pass.hpp"
+#include "illixr/vk/display_provider.hpp"
 
 using namespace ILLIXR;
+using namespace ILLIXR::vulkan;
 
 const std::string PREFIX = "\e[0;32m[Monado ILLIXR]\e[0m ";
 
-class monado_vulkan_display_sink : public display_sink {
+class monado_vulkan_display_provider : public display_provider {
 
 };
 
@@ -39,10 +40,10 @@ public:
 		, sb{pb->lookup_impl<switchboard>()}
 		, sb_pose{pb->lookup_impl<pose_prediction>()}
 		, sb_clock{pb->lookup_impl<RelativeClock>()}
-		, ds{std::make_shared<monado_vulkan_display_sink>()}
+		, ds{std::make_shared<monado_vulkan_display_provider>()}
 		, _m_vsync{sb->get_writer<switchboard::event_wrapper<time_point>>("vsync_estimate")}
 	{
-		pb_->register_impl<display_sink>(std::static_pointer_cast<display_sink>(ds));
+		pb_->register_impl<display_provider>(std::static_pointer_cast<display_provider>(ds));
 		sb_timewarp = pb_->lookup_impl<timewarp>();
 	}
 
@@ -51,7 +52,7 @@ public:
 	const std::shared_ptr<RelativeClock> sb_clock;
 	std::shared_ptr<timewarp> sb_timewarp;
 
-	std::shared_ptr<display_sink> ds;
+	std::shared_ptr<display_provider> ds;
 	switchboard::writer<switchboard::event_wrapper<time_point>> _m_vsync;
 
 	pose_type last_pose;
@@ -96,8 +97,7 @@ extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, Vk
 	ds->vk_instance = instance;
 	ds->vk_physical_device = physical_device;
 	ds->vk_device = device;
-	ds->graphics_queue = queue;
-	ds->graphics_queue_family = queue_family_index;
+	ds->queues[vulkan_utils::queue::GRAPHICS] = {queue, queue_family_index};
 
 	illixr_plugin_obj->ds = ds;
 }
