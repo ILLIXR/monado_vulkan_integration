@@ -187,7 +187,7 @@ vk_print_device_extensions_info(struct vk_bundle *vk,
 			"\tVK_EXT_global_priority: %s\n"
 			"\tVK_EXT_image_drm_format_modifier: %s\n"
 			"\tVK_EXT_robustness2: %s\n"
-			"\tVK_GOOGLE_display_timing: %s\n",
+			"\tVK_GOOGLE_display_timing: %s",
 			vk->has_KHR_external_fence_fd ? "Supported" : "Not Supported",
 			vk->has_KHR_external_semaphore_fd ? "Supported" : "Not Supported",
 			vk->has_KHR_format_feature_flags2 ? "Supported" : "Not Supported",
