@@ -28,8 +28,8 @@
 #include "util/u_distortion_mesh.h"
 
 #include "illixr_component.h"
-#include "common/dynamic_lib.hpp"
-#include "common/runtime.hpp"
+#include "illixr/dynamic_lib.hpp"
+#include "illixr/runtime.hpp"
 
 /*
  *

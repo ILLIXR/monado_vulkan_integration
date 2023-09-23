@@ -8,6 +8,9 @@
 # library is used everywhere. Including libraries loaded in
 # by applications like the OpenXR runtime library.
 #
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+
+find_package(Threads)
 
 configure_file(
 	"${CMAKE_CURRENT_SOURCE_DIR}/u_git_tag.c.in" "${CMAKE_CURRENT_BINARY_DIR}/u_git_tag.c"
@@ -110,6 +113,7 @@ target_link_libraries(
 		aux_generated_bindings
 		aux_os
 		aux_math
+		Threads::Threads
 	)
 
 # Only uses normal Windows libraries, doesn't add anything extra.
@@ -199,6 +203,7 @@ target_link_libraries(
 		aux_os
 		aux_math
 		aux_util
+		Threads::Threads
 	)
 
 if(XRT_HAVE_JPEG)

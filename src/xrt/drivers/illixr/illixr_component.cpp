@@ -14,13 +14,13 @@
 #include <vulkan/vulkan.h>
 
 #include <iostream>
-#include "common/plugin.hpp"
-#include "common/phonebook.hpp"
-#include "common/switchboard.hpp"
-#include "common/data_format.hpp"
-#include "common/pose_prediction.hpp"
-#include "common/vk_util/render_pass.hpp"
-#include "common/vk_util/display_sink.hpp"
+#include "illixr/plugin.hpp"
+#include "illixr/phonebook.hpp"
+#include "illixr/switchboard.hpp"
+#include "illixr/data_format.hpp"
+#include "illixr/pose_prediction.hpp"
+#include "illixr/vk_util/render_pass.hpp"
+#include "illixr/vk_util/display_sink.hpp"
 
 using namespace ILLIXR;
 

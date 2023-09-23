@@ -3,7 +3,9 @@
 
 # c-imgui doesn't do well with IPO - lots of warnings.
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 
+find_package(Threads)
 add_library(
 	st_gui STATIC
 	gui_common.h
@@ -35,6 +37,8 @@ target_link_libraries(
 		aux_ogl
 		drv_includes
 		xrt-external-imgui
+		PUBLIC
+		Threads::Threads
 	)
 target_include_directories(st_gui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/..)
 

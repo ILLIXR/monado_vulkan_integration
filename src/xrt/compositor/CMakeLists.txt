@@ -4,12 +4,14 @@
 ###
 # Client library
 #
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads)
 
 add_library(comp_client STATIC)
 
 target_link_libraries(
 	comp_client
-	PUBLIC xrt-interfaces
+	PUBLIC xrt-interfaces Threads::Threads
 	PRIVATE aux_util
 	)
 target_include_directories(comp_client PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -101,7 +103,7 @@ if(XRT_HAVE_VULKAN)
 		)
 	target_link_libraries(
 		comp_util
-		PUBLIC xrt-interfaces
+		PUBLIC xrt-interfaces Threads::Threads
 		PRIVATE aux_util aux_os aux_vk
 		)
 	target_include_directories(comp_util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -152,7 +154,7 @@ if(XRT_HAVE_VULKAN)
 		)
 	target_link_libraries(
 		comp_render
-		PUBLIC xrt-interfaces
+		PUBLIC xrt-interfaces Threads::Threads
 		PRIVATE aux_util aux_os aux_vk
 		)
 	target_include_directories(comp_render PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -190,7 +192,7 @@ if(XRT_MODULE_COMPOSITOR_MAIN)
 		)
 	target_link_libraries(
 		comp_main
-		PUBLIC xrt-interfaces
+		PUBLIC xrt-interfaces Threads::Threads
 		PRIVATE
 			aux_util
 			aux_os
@@ -218,7 +220,7 @@ if(XRT_MODULE_COMPOSITOR_MAIN)
 	endif()
 	if(XRT_FEATURE_WINDOW_PEEK)
 		target_sources(comp_main PRIVATE main/comp_window_peek.c)
-		target_link_libraries(comp_main PRIVATE SDL2::SDL2)
+		target_link_libraries(comp_main PRIVATE SDL2::SDL2 Threads::Threads)
 	endif()
 	if(WIN32)
 		target_sources(comp_main PRIVATE main/comp_window_mswin.c)
@@ -309,7 +311,7 @@ add_library(
 	)
 target_link_libraries(
 	comp_multi
-	PUBLIC xrt-interfaces
+	PUBLIC xrt-interfaces Threads::Threads
 	PRIVATE aux_util aux_os
 	)
 target_include_directories(comp_multi PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -1,5 +1,7 @@
 # Copyright 2019-2023, Collabora, Ltd.
 # SPDX-License-Identifier: BSL-1.0
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads)
 
 add_library(
 	aux_vk STATIC
@@ -24,7 +26,7 @@ add_library(
 	vk_sync_objects.c
 	vk_time.c
 	)
-target_link_libraries(aux_vk PUBLIC aux_os aux_util)
+target_link_libraries(aux_vk PUBLIC aux_os aux_util Threads::Threads)
 target_link_libraries(aux_vk PUBLIC Vulkan::Vulkan)
 target_include_directories(aux_vk PUBLIC ${Vulkan_INCLUDE_DIR})
 
