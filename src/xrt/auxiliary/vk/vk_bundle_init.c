@@ -660,6 +660,9 @@ fill_in_has_device_extensions(struct vk_bundle *vk, struct u_string_list *ext_li
 	vk->has_KHR_maintenance3 = false;
 	vk->has_KHR_maintenance4 = false;
 	vk->has_KHR_timeline_semaphore = false;
+	vk->has_KHR_video_queue = false;
+	vk->has_KHR_video_encode_queue = false;
+	vk->has_EXT_video_encode_h264 = false;
 	vk->has_EXT_calibrated_timestamps = false;
 	vk->has_EXT_display_control = false;
 	vk->has_EXT_external_memory_dma_buf = false;
@@ -760,7 +763,7 @@ fill_in_has_device_extensions(struct vk_bundle *vk, struct u_string_list *ext_li
 
 #if defined(VK_EXT_video_encode_h264)
 		if (strcmp(ext, VK_EXT_VIDEO_ENCODE_H264_EXTENSION_NAME) == 0) {
-			vk->has_KHR_video_encode_h264 = true;
+			vk->has_EXT_video_encode_h264 = true;
 			continue;
 		}
 #endif // defined(VK_EXT_video_encode_h264)
