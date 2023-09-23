@@ -43,6 +43,7 @@ vk_print_opened_device_info(struct vk_bundle *vk, enum u_logging_level log_level
 	vk->vkGetPhysicalDeviceProperties(vk->physical_device, &pdp);
 
 	vk_print_device_info(vk, log_level, &pdp, 0, "Device info:\n");
+	vk_print_device_extensions_info(vk, log_level);
 }
 
 void
@@ -159,4 +160,47 @@ vk_print_external_handles_info(struct vk_bundle *vk, enum u_logging_level log_le
 #else
 #error "Need port for fence sync handles printers"
 #endif
+}
+
+void
+vk_print_device_extensions_info(struct vk_bundle *vk,
+                     enum u_logging_level log_level)
+{
+	U_LOG_IFL(log_level, vk->log_level,
+			"Supported Device Extensions:\n"
+			"\tVK_KHR_external_fence_fd: %s\n"
+			"\tVK_KHR_external_semaphore_fd: %s\n"
+			"\tVK_KHR_format_feature_flags2: %s\n"
+			"\tVK_KHR_global_priority: %s\n"
+			"\tVK_KHR_image_format_list: %s\n"
+			"\tVK_KHR_maintenance1: %s\n"
+			"\tVK_KHR_maintenance2: %s\n"
+			"\tVK_KHR_maintenance3: %s\n"
+			"\tVK_KHR_maintenance4: %s\n"
+			"\tVK_KHR_timeline_semaphore: %s\n"
+			"\tVK_EXT_calibrated_timestamps: %s\n"
+			"\tVK_EXT_display_control: %s\n"
+			"\tVK_EXT_external_memory_dma_buf: %s\n"
+			"\tVK_EXT_global_priority: %s\n"
+			"\tVK_EXT_image_drm_format_modifier: %s\n"
+			"\tVK_EXT_robustness2: %s\n"
+			"\tVK_GOOGLE_display_timing: %s\n",
+			vk->has_KHR_external_fence_fd ? "Supported" : "Not Supported",
+			vk->has_KHR_external_semaphore_fd ? "Supported" : "Not Supported",
+			vk->has_KHR_format_feature_flags2 ? "Supported" : "Not Supported",
+			vk->has_KHR_global_priority ? "Supported" : "Not Supported",
+			vk->has_KHR_image_format_list ? "Supported" : "Not Supported",
+			vk->has_KHR_maintenance1 ? "Supported" : "Not Supported",
+			vk->has_KHR_maintenance2 ? "Supported" : "Not Supported",
+			vk->has_KHR_maintenance3 ? "Supported" : "Not Supported",
+			vk->has_KHR_maintenance4 ? "Supported" : "Not Supported",
+			vk->has_KHR_timeline_semaphore ? "Supported" : "Not Supported",
+			vk->has_EXT_calibrated_timestamps ? "Supported" : "Not Supported",
+			vk->has_EXT_display_control ? "Supported" : "Not Supported",
+			vk->has_EXT_external_memory_dma_buf ? "Supported" : "Not Supported",
+			vk->has_EXT_global_priority ? "Supported" : "Not Supported",
+			vk->has_EXT_image_drm_format_modifier ? "Supported" : "Not Supported",
+			vk->has_EXT_robustness2 ? "Supported" : "Not Supported",
+			vk->has_GOOGLE_display_timing ? "Supported" : "Not Supported"
+			);
 }

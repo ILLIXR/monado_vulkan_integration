@@ -27,6 +27,8 @@
 #include "util/u_string_list.h"
 #include "os/os_threading.h"
 
+#define VK_ENABLE_BETA_EXTENSIONS 1
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -129,6 +131,9 @@ struct vk_bundle
 	bool has_KHR_maintenance3;
 	bool has_KHR_maintenance4;
 	bool has_KHR_timeline_semaphore;
+	bool has_KHR_video_queue;
+	bool has_KHR_video_encode_queue;
+	bool has_EXT_videoe_encode_h264;
 	bool has_EXT_calibrated_timestamps;
 	bool has_EXT_display_control;
 	bool has_EXT_external_memory_dma_buf;
@@ -564,6 +569,11 @@ vk_print_features_info(struct vk_bundle *vk, enum u_logging_level log_level);
 void
 vk_print_external_handles_info(struct vk_bundle *vk, enum u_logging_level log_level);
 
+/*!
+ * Print which device extensions are enabled or disabled
+ */
+void
+vk_print_device_extensions_info(struct vk_bundle *vk, enum u_logging_level log_level);
 
 /*
  *

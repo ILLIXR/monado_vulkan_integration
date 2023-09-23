@@ -134,6 +134,10 @@ vk_fill_in_has_instance_extensions(struct vk_bundle *vk, struct u_string_list *e
 	for (uint32_t i = 0; i < ext_count; i++) {
 		const char *ext = exts[i];
 
+#ifndef NDEBUG
+		U_LOG_IFL(U_LOGGING_DEBUG, vk->log_level, ext);
+#endif
+
 #if defined(VK_EXT_display_surface_counter)
 		if (strcmp(ext, VK_EXT_DISPLAY_SURFACE_COUNTER_EXTENSION_NAME) == 0) {
 			vk->has_EXT_display_surface_counter = true;
@@ -790,6 +794,8 @@ fill_in_has_device_extensions(struct vk_bundle *vk, struct u_string_list *ext_li
 #endif // defined(VK_GOOGLE_display_timing)
 	}
 	// end of GENERATED device extension code - do not modify - used by scripts
+
+	vk_print_device_extensions_info(vk, U_LOGGING_DEBUG);
 }
 
 static VkResult
