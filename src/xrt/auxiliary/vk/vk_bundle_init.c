@@ -744,6 +744,27 @@ fill_in_has_device_extensions(struct vk_bundle *vk, struct u_string_list *ext_li
 		}
 #endif // defined(VK_KHR_timeline_semaphore)
 
+#if defined(VK_KHR_video_queue)
+		if (strcmp(ext, VK_KHR_VIDEO_QUEUE_EXTENSION_NAME) == 0) {
+			vk->has_KHR_video_queue = true;
+			continue;
+		}
+#endif // defined(VK_KHR_video_queue)
+
+#if defined(VK_KHR_video_encode_queue)
+		if (strcmp(ext, VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME) == 0) {
+			vk->has_KHR_video_encode_queue = true;
+			continue;
+		}
+#endif // defined(VK_KHR_video_encode_queue)
+
+#if defined(VK_EXT_video_encode_h264)
+		if (strcmp(ext, VK_EXT_VIDEO_ENCODE_H264_EXTENSION_NAME) == 0) {
+			vk->has_KHR_video_encode_h264 = true;
+			continue;
+		}
+#endif // defined(VK_EXT_video_encode_h264)
+
 #if defined(VK_EXT_calibrated_timestamps)
 		if (strcmp(ext, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME) == 0) {
 			vk->has_EXT_calibrated_timestamps = true;

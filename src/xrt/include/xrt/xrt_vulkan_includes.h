@@ -18,6 +18,7 @@
 #include "xrt/xrt_windows.h"
 
 #define VK_NO_PROTOTYPES
+#define VK_ENABLE_BETA_EXTENSIONS 1
 #include <vulkan/vulkan.h>
 
 // Dealing with underscore compat.

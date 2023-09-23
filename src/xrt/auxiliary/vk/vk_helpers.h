@@ -27,8 +27,6 @@
 #include "util/u_string_list.h"
 #include "os/os_threading.h"
 
-#define VK_ENABLE_BETA_EXTENSIONS 1
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -133,7 +131,7 @@ struct vk_bundle
 	bool has_KHR_timeline_semaphore;
 	bool has_KHR_video_queue;
 	bool has_KHR_video_encode_queue;
-	bool has_EXT_videoe_encode_h264;
+	bool has_EXT_video_encode_h264;
 	bool has_EXT_calibrated_timestamps;
 	bool has_EXT_display_control;
 	bool has_EXT_external_memory_dma_buf;
