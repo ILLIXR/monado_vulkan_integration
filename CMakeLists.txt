@@ -98,6 +98,8 @@ find_package(
 		video
 		CONFIG
 	)
+include_directories(${OpenCV_INCLUDE_DIRS})
+
 find_package(Libusb1 MODULE)
 find_package(JPEG MODULE)
 find_package(realsense2 CONFIG)
@@ -180,11 +182,22 @@ if(XRT_HAVE_LINUX OR MINGW)
 	pkg_check_modules(SURVIVE IMPORTED_TARGET survive)
 endif()
 
+# ILLIXR
+set(ILLIXR_PATH
+		""
+		CACHE PATH "Path to ILLIXR headers"
+		)
+if(ILLIXR_PATH)
+	list(APPEND CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX}/lib/cmake")
+endif()
 # Find a external SLAM implementation
 set(EXTERNAL_SLAM_SYSTEMS kimera_vio basalt)
 foreach(slam_system IN LISTS EXTERNAL_SLAM_SYSTEMS)
 	if(PKGCONFIG_FOUND)
 		pkg_check_modules(${slam_system} ${slam_system})
+	endif()
+	if(NOT ${slam_system}_FOUND)
+		find_package(${slam_system} CONFIG)
 	endif()
 	if(${slam_system}_FOUND)
 		set(SLAM_NAME ${slam_system})
@@ -205,12 +218,6 @@ else()
 	set(OPENVR_FOUND off)
 	message(STATUS "OpenVR not found")
 endif()
-
-# ILLIXR
-set(ILLIXR_PATH
-    ""
-    CACHE PATH "Path to ILLIXR headers"
-	)
 
 # This one is named differently because that's what CTest uses
 option(BUILD_TESTING "Enable building of the test suite?" ON)
@@ -347,7 +354,7 @@ option(XRT_BUILD_DRIVER_SIMULATED "Enable simulated driver" ON)
 option(XRT_BUILD_SAMPLES "Enable compiling sample code implementations that will not be linked into any final targets" ON)
 set(XRT_IPC_MSG_SOCK_FILENAME monado_comp_ipc CACHE STRING "Service socket filename")
 set(XRT_IPC_SERVICE_PID_FILENAME monado.pid CACHE STRING "Service pidfile filename")
-set(XRT_OXR_RUNTIME_SUFFIX monado CACHE STRING "OpenXR client library suffix")
+set(XRT_OXR_RUNTIME_SUFFIX monado_vk CACHE STRING "OpenXR client library suffix")
 
 # cmake-format: on
 

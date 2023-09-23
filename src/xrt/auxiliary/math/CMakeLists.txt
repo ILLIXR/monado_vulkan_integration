@@ -1,5 +1,7 @@
 # Copyright 2019-2022, Collabora, Ltd.
 # SPDX-License-Identifier: BSL-1.0
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads)
 
 xrt_optimized_math_flags()
 
@@ -41,7 +43,7 @@ add_library(
 	)
 target_link_libraries(
 	aux_math
-	PUBLIC aux-includes aux_util
+	PUBLIC aux-includes aux_util Threads::Threads
 	PRIVATE xrt-optimized-math
 	)
 target_include_directories(aux_math SYSTEM PRIVATE ${EIGEN3_INCLUDE_DIR})
