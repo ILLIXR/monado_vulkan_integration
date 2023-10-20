@@ -1734,12 +1734,16 @@ comp_renderer_set_projection_depth_layer(struct comp_renderer *r,
 		right_depth_array_index
 	);
 
-	comp_layer_update_stereo_descriptors( //
+	comp_layer_update_stereo_depth_descriptors( //
 	    l,                                //
 	    clamp_to_border_black,            //
 	    clamp_to_border_black,            //
 	    left_image_view,                  //
-	    right_image_view);                //
+	    right_image_view,
+		clamp_to_border_black,
+		clamp_to_border_black,
+		left_depth_view,
+		right_depth_view);                //
 
 	comp_layer_set_flip_y(l, data->flip_y);
 

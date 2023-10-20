@@ -34,8 +34,6 @@ struct comp_layer_renderer
 		VkFramebuffer handle;
 	} framebuffers[2];
 
-
-
 	struct vk_cmd_pool pool;
 
 	VkRenderPass render_pass;
