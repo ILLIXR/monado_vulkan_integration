@@ -298,10 +298,12 @@ do_graphics_layers(struct comp_compositor *c)
 			right = &layer->sc_array[1]->images[stereo->r.sub.image_index];
 
 			//! @todo: Make use of stereo->l_d and stereo->r_d
+			struct comp_swapchain_image *right_depth;
+			struct comp_swapchain_image *left_depth;
+			left_depth = &layer->sc_array[0]->images[stereo->l_d.sub.image_index];
+			right_depth = &layer->sc_array[1]->images[stereo->r_d.sub.image_index];
 
-			comp_renderer_set_projection_layer(c->r, i, left, right, data);
-
-			// ILLIXR: pass depth images to openwarp
+			comp_renderer_set_projection_layer(c->r, i, left, right, left_depth, right_depth, data);
 		} break;
 		case XRT_LAYER_CYLINDER: {
 			struct xrt_layer_cylinder_data *cyl = &layer->data.cylinder;

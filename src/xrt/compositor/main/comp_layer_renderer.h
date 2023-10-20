@@ -51,6 +51,7 @@ struct comp_layer_renderer
 	VkPipeline pipeline_equirect2;
 	VkPipeline pipeline_cube;
 	VkDescriptorSetLayout descriptor_set_layout;
+	VkDescriptorSetLayout descriptor_depth_set_layout;
 	VkDescriptorSetLayout descriptor_set_layout_equirect;
 
 	VkPipelineLayout pipeline_layout;
@@ -70,6 +71,7 @@ struct comp_layer_renderer
 
 	uint32_t transformation_ubo_binding;
 	uint32_t texture_binding;
+	uint32_t depth_binding;
 };
 
 /*!

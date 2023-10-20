@@ -63,6 +63,7 @@ struct comp_render_layer
 #endif
 	VkDescriptorPool descriptor_pool;
 	VkDescriptorSet descriptor_sets[2];
+	VkDescriptorSet descriptor_depth_sets[2];
 	VkDescriptorSet descriptor_equirect;
 
 	struct xrt_matrix_4x4 model_matrix;
@@ -75,12 +76,13 @@ struct comp_render_layer
 
 	uint32_t transformation_ubo_binding;
 	uint32_t texture_binding;
+	uint32_t depth_binding;
 
 	struct xrt_pose l_pose, r_pose;
 };
 
 struct comp_render_layer *
-comp_layer_create(struct vk_bundle *vk, VkDescriptorSetLayout *layout, VkDescriptorSetLayout *layout_equirect);
+comp_layer_create(struct vk_bundle *vk, VkDescriptorSetLayout *layout, VkDescriptorSetLayout *depth_layout, VkDescriptorSetLayout *layout_equirect);
 
 void
 comp_layer_draw(struct comp_render_layer *self,
@@ -107,6 +109,17 @@ comp_layer_update_stereo_descriptors(struct comp_render_layer *self,
                                      VkSampler right_sampler,
                                      VkImageView left_image_view,
                                      VkImageView right_image_view);
+
+void
+comp_layer_update_stereo_depth_descriptors(struct comp_render_layer *self,
+										   VkSampler left_sampler,
+										   VkSampler right_sampler,
+										   VkImageView left_image_view,
+										   VkImageView right_image_view,
+										   VkSampler left_depth_sampler,
+										   VkSampler right_depth_sampler,
+										   VkImageView left_depth_view,
+										   VkImageView right_depth_view);
 
 void
 comp_layer_set_flip_y(struct comp_render_layer *self, bool flip_y);

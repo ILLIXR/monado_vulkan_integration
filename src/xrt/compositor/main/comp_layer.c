@@ -260,10 +260,38 @@ comp_layer_update_stereo_descriptors(struct comp_render_layer *self,
 	                   right_image_view);
 }
 
+void
+comp_layer_update_stereo_depth_descriptors(struct comp_render_layer *self,
+										   VkSampler left_sampler,
+										   VkSampler right_sampler,
+										   VkImageView left_image_view,
+										   VkImageView right_image_view,
+										   VkSampler left_depth_sampler,
+										   VkSampler right_depth_sampler,
+										   VkImageView left_depth_view,
+										   VkImageView right_depth_view)
+{
+	struct vk_bundle *vk = self->vk;
+
+	_update_descriptor(self, vk, self->descriptor_sets[0], self->transformation_ubos[0].handle, left_sampler,
+	                   left_image_view);
+
+	_update_descriptor(self, vk, self->descriptor_sets[1], self->transformation_ubos[1].handle, right_sampler,
+	                   right_image_view);
+
+	_update_descriptor(self, vk, self->descriptor_depth_sets[0], self->transformation_ubos[0].handle, left_depth_sampler,
+	                   left_depth_view);
+
+	_update_descriptor(self, vk, self->descriptor_depth_sets[1], self->transformation_ubos[1].handle, right_depth_sampler,
+	                   right_depth_view);
+
+}
+
 static bool
 _init(struct comp_render_layer *self,
       struct vk_bundle *vk,
       VkDescriptorSetLayout *layout,
+	  VkDescriptorSetLayout *depth_layout,
       VkDescriptorSetLayout *layout_equirect)
 {
 	self->vk = vk;
@@ -291,17 +319,21 @@ _init(struct comp_render_layer *self,
 	        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 	    },
 	    {
-	        .descriptorCount = 2,
+	        .descriptorCount = 4,
 	        .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-	    },
+	    }
 	};
 
 	if (!vk_init_descriptor_pool(vk, pool_sizes, ARRAY_SIZE(pool_sizes), 3, &self->descriptor_pool))
 		return false;
 
-	for (uint32_t eye = 0; eye < 2; eye++)
+	for (uint32_t eye = 0; eye < 2; eye++) {
 		if (!vk_allocate_descriptor_sets(vk, self->descriptor_pool, 1, layout, &self->descriptor_sets[eye]))
 			return false;
+
+		if (!vk_allocate_descriptor_sets(vk, self->descriptor_pool, 1, depth_layout, &self->descriptor_depth_sets[eye]))
+			return false;
+	}
 
 #if defined(XRT_FEATURE_OPENXR_LAYER_EQUIRECT1) || defined(XRT_FEATURE_OPENXR_LAYER_EQUIRECT2)
 	if (!vk_allocate_descriptor_sets(vk, self->descriptor_pool, 1, layout_equirect, &self->descriptor_equirect))
@@ -493,11 +525,11 @@ comp_layer_get_cylinder_vertex_buffer(struct comp_render_layer *self)
 }
 
 struct comp_render_layer *
-comp_layer_create(struct vk_bundle *vk, VkDescriptorSetLayout *layout, VkDescriptorSetLayout *layout_equirect)
+comp_layer_create(struct vk_bundle *vk, VkDescriptorSetLayout *layout, VkDescriptorSetLayout *depth_layout, VkDescriptorSetLayout *layout_equirect)
 {
 	struct comp_render_layer *q = U_TYPED_CALLOC(struct comp_render_layer);
 
-	_init(q, vk, layout, layout_equirect);
+	_init(q, vk, layout, depth_layout, layout_equirect);
 
 	if (!_init_cylinder_vertex_buffer(q)) {
 		return NULL;

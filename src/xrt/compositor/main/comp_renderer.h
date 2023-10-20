@@ -66,6 +66,15 @@ comp_renderer_set_projection_layer(struct comp_renderer *r,
                                    struct comp_swapchain_image *right_image,
                                    struct xrt_layer_data *data);
 
+void
+comp_renderer_set_projection_depth_layer(struct comp_renderer *r,
+                                         uint32_t layer,
+                                         struct comp_swapchain_image *left_image,
+                                         struct comp_swapchain_image *right_image,
+                                         struct comp_swapchain_image *left_depth,
+                                         struct comp_swapchain_image *right_depth,
+                                         struct xrt_layer_data *data);
+
 /*!
  * @public @memberof comp_renderer
  * @ingroup comp_main

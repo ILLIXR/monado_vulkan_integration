@@ -1690,6 +1690,73 @@ comp_renderer_set_projection_layer(struct comp_renderer *r,
 	l->transformation[1].extent = data->stereo.r.sub.rect.extent;
 }
 
+void
+comp_renderer_set_projection_depth_layer(struct comp_renderer *r,
+                                         uint32_t layer,
+                                         struct comp_swapchain_image *left_image,
+                                         struct comp_swapchain_image *right_image,
+                                         struct comp_swapchain_image *left_depth,
+                                         struct comp_swapchain_image *right_depth,
+                                         struct xrt_layer_data *data)
+{
+	uint32_t left_array_index = data->stereo.l.sub.array_index;
+	uint32_t right_array_index = data->stereo.r.sub.array_index;
+
+	uint32_t left_depth_array_index = data->stereo_depth.l_d.sub.array_index;
+	uint32_t right_depth_array_index = data->stereo_depth.r_d.sub.array_index;
+
+	struct comp_render_layer *l = r->lr->layers[layer];
+
+	l->transformation_ubo_binding = r->lr->transformation_ubo_binding;
+	l->texture_binding = r->lr->texture_binding;
+
+	VkSampler clamp_to_border_black = r->c->nr.samplers.clamp_to_border_black;
+
+	VkImageView left_image_view = get_image_view( //
+	    left_image,                               //
+	    data->flags,                              //
+	    left_array_index);                        //
+
+	VkImageView right_image_view = get_image_view( //
+	    right_image,                               //
+	    data->flags,                               //
+	    right_array_index);                        //
+
+	VkImageView left_depth_view = get_image_view(
+		left_depth,
+		data->flags,
+		left_depth_array_index
+	);
+
+	VkImageView right_depth_view = get_image_view(
+		right_depth,
+		data->flags,
+		right_depth_array_index
+	);
+
+	comp_layer_update_stereo_descriptors( //
+	    l,                                //
+	    clamp_to_border_black,            //
+	    clamp_to_border_black,            //
+	    left_image_view,                  //
+	    right_image_view);                //
+
+	comp_layer_set_flip_y(l, data->flip_y);
+
+	l->type = XRT_LAYER_STEREO_PROJECTION_DEPTH;
+	l->flags = data->flags;
+	l->view_space = (data->flags & XRT_LAYER_COMPOSITION_VIEW_SPACE_BIT) != 0;
+
+	// ILLIXR: pass render pose to layer renderer
+	l->l_pose = data->stereo.l.pose;
+	l->r_pose = data->stereo.r.pose;
+
+	l->transformation[0].offset = data->stereo.l.sub.rect.offset;
+	l->transformation[0].extent = data->stereo.l.sub.rect.extent;
+	l->transformation[1].offset = data->stereo.r.sub.rect.offset;
+	l->transformation[1].extent = data->stereo.r.sub.rect.extent;
+}
+
 #ifdef XRT_FEATURE_OPENXR_LAYER_EQUIRECT1
 void
 comp_renderer_set_equirect1_layer(struct comp_renderer *r,

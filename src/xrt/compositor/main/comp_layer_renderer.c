@@ -39,19 +39,31 @@ _init_render_pass(struct vk_bundle *vk,
                   VkSampleCountFlagBits sample_count,
                   VkRenderPass *out_render_pass)
 {
-	VkAttachmentDescription *attachments = (VkAttachmentDescription[]){
-	    {
-	        .format = format,
-	        .samples = sample_count,
-	        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-	        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-	        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-	        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-	        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-	        .finalLayout = final_layout,
-	        .flags = 0,
-	    },
+	VkAttachmentDescription image_attachment = {
+		.format = format,
+		.samples = sample_count,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.finalLayout = final_layout,
+		.flags = 0,
 	};
+
+	VkAttachmentDescription depth_attachment = {
+		.format = VK_FORMAT_D16_UNORM,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL | VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		.flags = 0,
+	};
+
+	VkAttachmentDescription attachments[2] = {image_attachment, depth_attachment};
 
 	VkRenderPassCreateInfo renderpass_info = {
 	    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
@@ -68,7 +80,11 @@ _init_render_pass(struct vk_bundle *vk,
 	                    .attachment = 0,
 	                    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	                },
-	            .pDepthStencilAttachment = NULL,
+	            .pDepthStencilAttachment = 
+					&(VkAttachmentReference){
+						.attachment = 1,
+						.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL | VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+					},
 	            .pResolveAttachments = NULL,
 	        },
 	    .dependencyCount = 0,
@@ -114,6 +130,44 @@ _init_descriptor_layout(struct comp_layer_renderer *self)
 }
 
 static bool
+_init_depth_descriptor_layout(struct comp_layer_renderer *self)
+{
+	struct vk_bundle *vk = self->vk;
+
+	VkDescriptorSetLayoutCreateInfo info = {
+	    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+	    .bindingCount = 2,
+	    .pBindings =
+	        (VkDescriptorSetLayoutBinding[]){
+	            {
+	                .binding = self->transformation_ubo_binding,
+	                .descriptorCount = 1,
+	                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+	                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+	            },
+	            {
+	                .binding = self->texture_binding,
+	                .descriptorCount = 1,
+	                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+	                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+	            },
+				{
+					.binding = self->depth_binding,
+	                .descriptorCount = 1,
+	                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+	                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+				}
+	        },
+	};
+
+	VkResult res = vk->vkCreateDescriptorSetLayout(vk->device, &info, NULL, &self->descriptor_depth_set_layout);
+
+	vk_check_error("vkCreateDescriptorSetLayout", res, false);
+
+	return true;
+}
+
+static bool
 _init_descriptor_layout_equirect(struct comp_layer_renderer *self)
 {
 	struct vk_bundle *vk = self->vk;
@@ -144,12 +198,13 @@ _init_pipeline_layout(struct comp_layer_renderer *self)
 {
 	struct vk_bundle *vk = self->vk;
 
-	const VkDescriptorSetLayout set_layouts[2] = {self->descriptor_set_layout,
+	const VkDescriptorSetLayout set_layouts[3] = {self->descriptor_set_layout,
+												  self->descriptor_depth_set_layout,
 	                                              self->descriptor_set_layout_equirect};
 
 	VkPipelineLayoutCreateInfo info = {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-	    .setLayoutCount = 2,
+	    .setLayoutCount = 3,
 	    .pSetLayouts = set_layouts,
 	};
 
@@ -433,11 +488,12 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 
 	VkFormat depth_format = VK_FORMAT_D16_UNORM;
 
-	VkImageUsageFlags depth_usage = 		//
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | //
-		VK_IMAGE_USAGE_SAMPLED_BIT;
+	VkImageUsageFlags depth_usage =                   //
+	    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | //
+	    VK_IMAGE_USAGE_SAMPLED_BIT;
 
-	res = vk_create_image_simple(vk, self->extent, depth_format, depth_usage, &self->framebuffers[eye].depth_memory, &self->framebuffers[eye].depth_image);
+	res = vk_create_image_simple(vk, self->extent, depth_format, depth_usage, &self->framebuffers[eye].depth_memory,
+	                             &self->framebuffers[eye].depth_image);
 
 	VkImageSubresourceRange depth_range = {
 	    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -447,11 +503,10 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 	    .layerCount = 1,
 	};
 
-	res = vk_create_view(vk, self->framebuffers[eye].depth_image, VK_IMAGE_VIEW_TYPE_2D, depth_format, depth_range, &self->framebuffers[eye].view);
+	res = vk_create_view(vk, self->framebuffers[eye].depth_image, VK_IMAGE_VIEW_TYPE_2D, depth_format, depth_range,
+	                     &self->framebuffers[eye].view);
 
-	VkImageView views[2] = {
-		self->framebuffers[eye].view, self->framebuffers[eye].depth_view
-	};
+	VkImageView views[2] = {self->framebuffers[eye].view, self->framebuffers[eye].depth_view};
 
 	VkFramebufferCreateInfo framebuffer_info = {
 	    .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -479,7 +534,7 @@ comp_layer_renderer_allocate_layers(struct comp_layer_renderer *self, uint32_t l
 
 	for (uint32_t i = 0; i < self->layer_count; i++) {
 		self->layers[i] =
-		    comp_layer_create(vk, &self->descriptor_set_layout, &self->descriptor_set_layout_equirect);
+		    comp_layer_create(vk, &self->descriptor_set_layout, &self->descriptor_depth_set_layout, &self->descriptor_set_layout_equirect);
 	}
 }
 
@@ -514,6 +569,7 @@ _init(struct comp_layer_renderer *self,
 	// binding indices used in layer.vert, layer.frag
 	self->transformation_ubo_binding = 0;
 	self->texture_binding = 1;
+	self->depth_binding = 2;
 
 	for (uint32_t i = 0; i < 2; i++) {
 		math_matrix_4x4_identity(&self->mat_projection[i]);
