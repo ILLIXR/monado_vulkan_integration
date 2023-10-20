@@ -553,10 +553,19 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 
 	// Initialize ILLIXR timewarp
 	if (strcmp(r->c->xdev->str, "ILLIXR") == 0) {
-		VkImageView buffers[2];
+		// VkImageView buffers[2];
+		// buffers[0] = r->lr->framebuffers[0].view;
+		// buffers[1] = r->lr->framebuffers[1].view;
+		
+		// illixr_initialize_timewarp(r->lr->render_pass, 0, buffers, 1);
+
+		// OpenWarp also wants the depth image view
+		VkImageView buffers[4];
 		buffers[0] = r->lr->framebuffers[0].view;
-		buffers[1] = r->lr->framebuffers[1].view;
-		illixr_initialize_timewarp(r->lr->render_pass, 0, buffers, 1);
+		buffers[1] = r->lr->framebuffers[0].depth_view;
+		buffers[2] = r->lr->framebuffers[1].view;
+		buffers[3] = r->lr->framebuffers[1].depth_view;
+		illixr_initialize_timewarp(r->lr->render_pass, 0, buffers, 2);
 	}
 
 	return true;

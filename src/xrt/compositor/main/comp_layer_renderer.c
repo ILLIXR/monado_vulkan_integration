@@ -431,11 +431,33 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 
 	vk_check_error("vk_create_view", res, false);
 
+	VkFormat depth_format = VK_FORMAT_D16_UNORM;
+
+	VkImageUsageFlags depth_usage = 		//
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | //
+		VK_IMAGE_USAGE_SAMPLED_BIT;
+
+	res = vk_create_image_simple(vk, self->extent, depth_format, depth_usage, &self->framebuffers[eye].depth_memory, &self->framebuffers[eye].depth_image);
+
+	VkImageSubresourceRange depth_range = {
+	    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+	    .baseMipLevel = 0,
+	    .levelCount = 1,
+	    .baseArrayLayer = 0,
+	    .layerCount = 1,
+	};
+
+	res = vk_create_view(vk, self->framebuffers[eye].depth_image, VK_IMAGE_VIEW_TYPE_2D, depth_format, depth_range, &self->framebuffers[eye].view);
+
+	VkImageView views[2] = {
+		self->framebuffers[eye].view, self->framebuffers[eye].depth_view
+	};
+
 	VkFramebufferCreateInfo framebuffer_info = {
 	    .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
 	    .renderPass = rp,
-	    .attachmentCount = 1,
-	    .pAttachments = (VkImageView[]){self->framebuffers[eye].view},
+	    .attachmentCount = 2,
+	    .pAttachments = views,
 	    .width = self->extent.width,
 	    .height = self->extent.height,
 	    .layers = 1,
@@ -669,6 +691,9 @@ _destroy_framebuffer(struct comp_layer_renderer *self, uint32_t i)
 	vk->vkDestroyImageView(vk->device, self->framebuffers[i].view, NULL);
 	vk->vkDestroyImage(vk->device, self->framebuffers[i].image, NULL);
 	vk->vkFreeMemory(vk->device, self->framebuffers[i].memory, NULL);
+	vk->vkDestroyImageView(vk->device, self->framebuffers[i].depth_view, NULL);
+	vk->vkDestroyImage(vk->device, self->framebuffers[i].depth_image, NULL);
+	vk->vkFreeMemory(vk->device, self->framebuffers[i].depth_memory, NULL);
 	vk->vkDestroyFramebuffer(vk->device, self->framebuffers[i].handle, NULL);
 }
 

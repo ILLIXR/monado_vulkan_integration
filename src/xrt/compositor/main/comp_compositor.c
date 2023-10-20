@@ -300,6 +300,8 @@ do_graphics_layers(struct comp_compositor *c)
 			//! @todo: Make use of stereo->l_d and stereo->r_d
 
 			comp_renderer_set_projection_layer(c->r, i, left, right, data);
+
+			// ILLIXR: pass depth images to openwarp
 		} break;
 		case XRT_LAYER_CYLINDER: {
 			struct xrt_layer_cylinder_data *cyl = &layer->data.cylinder;

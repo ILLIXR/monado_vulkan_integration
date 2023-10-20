@@ -25,8 +25,16 @@ struct comp_layer_renderer
 		VkImage image;
 		VkDeviceMemory memory;
 		VkImageView view;
+
+		// Need depth for OpenWarp
+		VkImage depth_image;
+		VkDeviceMemory depth_memory;
+		VkImageView depth_view;
+
 		VkFramebuffer handle;
 	} framebuffers[2];
+
+
 
 	struct vk_cmd_pool pool;
 
