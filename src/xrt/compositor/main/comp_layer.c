@@ -368,15 +368,13 @@ comp_layer_draw(struct comp_render_layer *self,
 	const struct xrt_matrix_4x4 *vp = self->view_space ? vp_eye : vp_world;
 
 	switch (self->type) {
-	case XRT_LAYER_STEREO_PROJECTION: _update_mvp_matrix(self, eye, &proj_scale); break;
+	case XRT_LAYER_STEREO_PROJECTION:
+	case XRT_LAYER_STEREO_PROJECTION_DEPTH: _update_mvp_matrix(self, eye, &proj_scale); break;
 	case XRT_LAYER_QUAD:
 	case XRT_LAYER_CYLINDER:
 	case XRT_LAYER_EQUIRECT1:
 	case XRT_LAYER_EQUIRECT2:
 	case XRT_LAYER_CUBE: _update_mvp_matrix(self, eye, vp); break;
-	case XRT_LAYER_STEREO_PROJECTION_DEPTH:
-		// Should never end up here.
-		assert(false);
 	}
 
 
@@ -389,6 +387,15 @@ comp_layer_draw(struct comp_render_layer *self,
 		vk->vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 2, sets, 0,
 		                            NULL);
 
+	} else if (self->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
+		const VkDescriptorSet sets[3] = {
+		    self->descriptor_sets[eye],
+			self->descriptor_depth_sets[eye],
+		    self->descriptor_equirect,
+		};
+
+		vk->vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 3, sets, 0,
+		                            NULL);
 	} else {
 		vk->vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1,
 		                            &self->descriptor_sets[eye], 0, NULL);
