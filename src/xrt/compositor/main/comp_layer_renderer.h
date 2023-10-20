@@ -49,6 +49,7 @@ struct comp_layer_renderer
 	VkPipeline pipeline_unpremultiplied_alpha;
 	VkPipeline pipeline_equirect1;
 	VkPipeline pipeline_equirect2;
+	VkPipeline pipeline_depth;
 	VkPipeline pipeline_cube;
 	VkDescriptorSetLayout descriptor_set_layout;
 	VkDescriptorSetLayout descriptor_depth_set_layout;

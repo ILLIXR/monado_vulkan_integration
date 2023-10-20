@@ -270,7 +270,7 @@ _init_graphics_pipeline(struct comp_layer_renderer *self,
 	        &(VkPipelineDepthStencilStateCreateInfo){
 	            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
 	            .depthTestEnable = VK_FALSE,
-	            .depthWriteEnable = VK_FALSE,
+	            .depthWriteEnable = VK_TRUE,
 	            .depthCompareOp = VK_COMPARE_OP_NEVER,
 	        },
 	    .blend_attachments =
@@ -616,6 +616,12 @@ _init(struct comp_layer_renderer *self,
 	if (!_init_graphics_pipeline(self, s->equirect2_vert, s->equirect2_frag, true, &self->pipeline_equirect2)) {
 		return false;
 	}
+
+#if defined(XRT_FEATURE_OPENXR_LAYER_DEPTH)
+	if (!_init_graphics_pipeline(self, s->depth_vert, s->depth_frag, true, &self->pipeline_depth)) {
+		return false;
+	}
+#endif
 
 #if defined(XRT_FEATURE_OPENXR_LAYER_CUBE)
 	if (!_init_graphics_pipeline(self, s->cube_vert, s->cube_frag, true, &self->pipeline_cube)) {
