@@ -121,6 +121,8 @@ if(XRT_HAVE_VULKAN)
 	    shaders/layer.comp
 	    shaders/mesh.frag
 	    shaders/mesh.vert
+		shaders/depth.frag
+	    shaders/depth.vert
 	    shaders/layer.frag
 	    shaders/layer.vert
 	    shaders/equirect1.vert

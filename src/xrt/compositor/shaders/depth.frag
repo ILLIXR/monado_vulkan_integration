@@ -18,7 +18,6 @@ layout (binding = 2) uniform sampler2D depth;
 
 layout (location = 0)  in vec2 uv;
 layout (location = 0) out vec4 out_color;
-layout (location = 1) out float out_depth;
 
 
 void main ()
@@ -26,5 +25,5 @@ void main ()
 	vec2 uv_sub = vec2(ubo.offset) + uv * vec2(ubo.extent);
 	uv_sub /= textureSize(image, 0);
 	out_color = texture(image, uv_sub);
-	out_depth = texture(depth, uv_sub);
+	gl_FragDepth = texture(depth, uv_sub);
 }
