@@ -21,6 +21,7 @@
 #include "illixr/pose_prediction.hpp"
 #include "illixr/vk/render_pass.hpp"
 #include "illixr/vk/display_provider.hpp"
+#include "illixr/vk/vulkan_objects.hpp"
 
 using namespace ILLIXR;
 using namespace ILLIXR::vulkan;
@@ -110,6 +111,7 @@ extern "C" void illixr_destroy_timewarp() {
 extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t subpass, VkImageView* buffer_pool, uint32_t num_buffers_per_eye) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 	std::cout << PREFIX << "Initializing timewarp" << std::endl;
+	vulkan::buffer_pool<pose_type> buffer_pool_obj;
 	std::vector<VkImageView> left_eye_views(buffer_pool, buffer_pool + num_buffers_per_eye);
 	std::vector<VkImageView> right_eye_views(buffer_pool + num_buffers_per_eye, buffer_pool + 2 * num_buffers_per_eye);
 	std::array<std::vector<VkImageView>, 2> eye_views = {left_eye_views, right_eye_views};
