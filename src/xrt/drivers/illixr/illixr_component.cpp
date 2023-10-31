@@ -98,7 +98,7 @@ extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, Vk
 	ds->vk_instance = instance;
 	ds->vk_physical_device = physical_device;
 	ds->vk_device = device;
-	ds->queues[vulkan_utils::queue::GRAPHICS] = {queue, queue_family_index};
+	ds->queues[queue::GRAPHICS] = {queue, queue_family_index};
 
 	illixr_plugin_obj->ds = ds;
 }
