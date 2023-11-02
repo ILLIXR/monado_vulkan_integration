@@ -5,7 +5,7 @@
 #version 460
 
 
-layout (binding = 0, std140) uniform Transformation
+layout (set = 0, binding = 0, std140) uniform Transformation
 {
 	mat4 mvp;
 	ivec2 offset;

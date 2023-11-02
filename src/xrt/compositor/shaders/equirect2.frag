@@ -14,7 +14,7 @@ layout (set = 0, binding = 0, std140) uniform Transformation {
 
 layout (set = 0, binding = 1) uniform sampler2D image;
 
-layout (set = 1, binding = 0, std140) uniform Equirect {
+layout (set = 2, binding = 0, std140) uniform Equirect {
 	float radius;
 	float central_horizontal_angle;
 	float upper_vertical_angle;

@@ -311,7 +311,7 @@ renderer_build_rendering(struct comp_renderer *r,
 	struct comp_render_layer *layer;
 	for (int i = 0; i < r->lr->layer_count; i++) {
 		layer = r->lr->layers[i];
-		if (layer->type == XRT_LAYER_STEREO_PROJECTION) {
+		if (layer->type == XRT_LAYER_STEREO_PROJECTION || layer->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
 			break;
 		}
 	}

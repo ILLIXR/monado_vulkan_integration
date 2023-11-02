@@ -303,7 +303,7 @@ do_graphics_layers(struct comp_compositor *c)
 			left_depth = &layer->sc_array[0]->images[stereo->l_d.sub.image_index];
 			right_depth = &layer->sc_array[1]->images[stereo->r_d.sub.image_index];
 
-			comp_renderer_set_projection_layer(c->r, i, left, right, left_depth, right_depth, data);
+			comp_renderer_set_projection_depth_layer(c->r, i, left, right, left_depth, right_depth, data);
 		} break;
 		case XRT_LAYER_CYLINDER: {
 			struct xrt_layer_cylinder_data *cyl = &layer->data.cylinder;

@@ -59,16 +59,34 @@ _init_render_pass(struct vk_bundle *vk,
 		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL | VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
 		.flags = 0,
 	};
 
 	VkAttachmentDescription attachments[2] = {image_attachment, depth_attachment};
 
+	VkSubpassDependency dependencies[2];
+
+	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[0].dstSubpass = 0;
+	dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	dependencies[1].srcSubpass = 0;
+	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
 	VkRenderPassCreateInfo renderpass_info = {
 	    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
 	    .flags = 0,
-	    .attachmentCount = 1,
+	    .attachmentCount = 2,
 	    .pAttachments = attachments,
 	    .subpassCount = 1,
 	    .pSubpasses =
@@ -83,7 +101,7 @@ _init_render_pass(struct vk_bundle *vk,
 	            .pDepthStencilAttachment = 
 					&(VkAttachmentReference){
 						.attachment = 1,
-						.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL | VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+						.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 					},
 	            .pResolveAttachments = NULL,
 	        },
@@ -504,7 +522,7 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 	};
 
 	res = vk_create_view(vk, self->framebuffers[eye].depth_image, VK_IMAGE_VIEW_TYPE_2D, depth_format, depth_range,
-	                     &self->framebuffers[eye].view);
+	                     &self->framebuffers[eye].depth_view);
 
 	VkImageView views[2] = {self->framebuffers[eye].view, self->framebuffers[eye].depth_view};
 
@@ -592,6 +610,8 @@ _init(struct comp_layer_renderer *self,
 			return false;
 
 	if (!_init_descriptor_layout(self))
+		return false;
+	if (!_init_depth_descriptor_layout(self))
 		return false;
 	if (!_init_descriptor_layout_equirect(self))
 		return false;
