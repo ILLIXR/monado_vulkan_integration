@@ -235,7 +235,6 @@ renderer_build_rendering(struct comp_renderer *r,
 
 	struct comp_compositor *c = r->c;
 
-
 	/*
 	 * Rendering
 	 */
@@ -330,7 +329,6 @@ renderer_build_rendering(struct comp_renderer *r,
 	    rr,                  //
 	    rtr);                //
 
-
 	/*
 	 * Viewport one
 	 */
@@ -341,6 +339,7 @@ renderer_build_rendering(struct comp_renderer *r,
 	                      &l_viewport_data); // viewport_data
 
 	// render_gfx_distortion(rr);
+
 	illixr_tw_record_command_buffer(rr->r->cmd, 0, 1);
 
 	render_gfx_end_view(rr);
@@ -356,6 +355,7 @@ renderer_build_rendering(struct comp_renderer *r,
 	                      &r_viewport_data); // viewport_data
 
 	// render_gfx_distortion(rr);
+
 	illixr_tw_record_command_buffer(rr->r->cmd, 0, 0);
 
 	render_gfx_end_view(rr);
@@ -455,7 +455,7 @@ renderer_create_layer_renderer(struct comp_renderer *r)
 
 	uint32_t layer_count = 0;
 	if (r->lr != NULL) {
-		// if we already had one, re-populate it after recreation.
+		// if we aand then the ready had one, re-populate it after recreation.
 		layer_count = r->lr->layer_count;
 		comp_layer_renderer_destroy(&r->lr);
 	}
@@ -553,19 +553,19 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 
 	// Initialize ILLIXR timewarp
 	if (strcmp(r->c->xdev->str, "ILLIXR") == 0) {
-		// VkImageView buffers[2];
-		// buffers[0] = r->lr->framebuffers[0].view;
-		// buffers[1] = r->lr->framebuffers[1].view;
+		VkImageView buffers[2];
+		buffers[0] = r->lr->framebuffers[0].view;
+		buffers[1] = r->lr->framebuffers[1].view;
 		
-		// illixr_initialize_timewarp(r->lr->render_pass, 0, buffers, 1);
+		illixr_initialize_timewarp(r->rtr_array[0].render_pass, 0, buffers, 1);
 
 		// OpenWarp also wants the depth image view
-		VkImageView buffers[4];
-		buffers[0] = r->lr->framebuffers[0].view;
-		buffers[1] = r->lr->framebuffers[0].depth_view;
-		buffers[2] = r->lr->framebuffers[1].view;
-		buffers[3] = r->lr->framebuffers[1].depth_view;
-		illixr_initialize_timewarp(r->lr->render_pass, 0, buffers, 2);
+		// VkImageView buffers[4];
+		// buffers[0] = r->lr->framebuffers[0].view;
+		// buffers[1] = r->lr->framebuffers[0].depth_view;
+		// buffers[2] = r->lr->framebuffers[1].view;
+		// buffers[3] = VK_NULL_HANDLE; // r->lr->framebuffers[1].depth_view;
+		// illixr_initialize_timewarp(r->lr->render_pass, 0, buffers, 2);
 	}
 
 	return true;

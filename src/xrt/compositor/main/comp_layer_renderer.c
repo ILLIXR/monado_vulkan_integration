@@ -30,8 +30,6 @@ static const VkClearColorValue background_color_active = {
     .float32 = {0.0f, 0.0f, 0.0f, 1.0f},
 };
 
-
-
 static bool
 _init_render_pass(struct vk_bundle *vk,
                   VkFormat format,
@@ -105,8 +103,8 @@ _init_render_pass(struct vk_bundle *vk,
 					},
 	            .pResolveAttachments = NULL,
 	        },
-	    .dependencyCount = 0,
-	    .pDependencies = NULL,
+	    .dependencyCount = 2,
+	    .pDependencies = dependencies,
 	};
 
 	VkResult res = vk->vkCreateRenderPass(vk->device, &renderpass_info, NULL, out_render_pass);
@@ -154,23 +152,11 @@ _init_depth_descriptor_layout(struct comp_layer_renderer *self)
 
 	VkDescriptorSetLayoutCreateInfo info = {
 	    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-	    .bindingCount = 2,
+	    .bindingCount = 1,
 	    .pBindings =
 	        (VkDescriptorSetLayoutBinding[]){
-	            {
-	                .binding = self->transformation_ubo_binding,
-	                .descriptorCount = 1,
-	                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-	                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-	            },
-	            {
-	                .binding = self->texture_binding,
-	                .descriptorCount = 1,
-	                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-	                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-	            },
 				{
-					.binding = self->depth_binding,
+					.binding = 0,
 	                .descriptorCount = 1,
 	                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 	                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -587,7 +573,7 @@ _init(struct comp_layer_renderer *self,
 	// binding indices used in layer.vert, layer.frag
 	self->transformation_ubo_binding = 0;
 	self->texture_binding = 1;
-	self->depth_binding = 2;
+	self->depth_binding = 0;
 
 	for (uint32_t i = 0; i < 2; i++) {
 		math_matrix_4x4_identity(&self->mat_projection[i]);
@@ -684,7 +670,7 @@ _render_pass_begin(struct vk_bundle *vk,
 	                },
 	            .extent = extent,
 	        },
-	    .clearValueCount = 1,
+	    .clearValueCount = 2,
 	    .pClearValues =
 	        (VkClearValue[]){
 	            {

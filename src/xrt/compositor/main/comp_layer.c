@@ -176,6 +176,34 @@ _update_descriptor(struct comp_render_layer *self,
 	vk->vkUpdateDescriptorSets(vk->device, 2, sets, 0, NULL);
 }
 
+static void
+_update_depth_descriptor(struct comp_render_layer *self,
+                   struct vk_bundle *vk,
+                   VkDescriptorSet set,
+                   VkSampler sampler,
+                   VkImageView image_view)
+{
+	VkWriteDescriptorSet *sets = (VkWriteDescriptorSet[]){
+	    {
+	        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+	        .dstSet = set,
+	        .dstBinding = 0,
+	        .descriptorCount = 1,
+	        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+	        .pImageInfo =
+	            &(VkDescriptorImageInfo){
+	                .sampler = sampler,
+	                .imageView = image_view,
+	                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	            },
+	        .pBufferInfo = NULL,
+	        .pTexelBufferView = NULL,
+	    },
+	};
+
+	vk->vkUpdateDescriptorSets(vk->device, 1, sets, 0, NULL);
+}
+
 #if defined(XRT_FEATURE_OPENXR_LAYER_EQUIRECT1) || defined(XRT_FEATURE_OPENXR_LAYER_EQUIRECT2)
 static void
 _update_descriptor_equirect(struct comp_render_layer *self, VkDescriptorSet set, VkBuffer buffer)
@@ -279,11 +307,9 @@ comp_layer_update_stereo_depth_descriptors(struct comp_render_layer *self,
 	_update_descriptor(self, vk, self->descriptor_sets[1], self->transformation_ubos[1].handle, right_sampler,
 	                   right_image_view);
 
-	_update_descriptor(self, vk, self->descriptor_depth_sets[0], self->transformation_ubos[0].handle, left_depth_sampler,
-	                   left_depth_view);
+	_update_depth_descriptor(self, vk, self->descriptor_depth_sets[0], left_depth_sampler, left_depth_view);
 
-	_update_descriptor(self, vk, self->descriptor_depth_sets[1], self->transformation_ubos[1].handle, right_depth_sampler,
-	                   right_depth_view);
+	_update_depth_descriptor(self, vk, self->descriptor_depth_sets[1], right_depth_sampler, right_depth_view);
 
 }
 
@@ -315,16 +341,16 @@ _init(struct comp_render_layer *self,
 
 	VkDescriptorPoolSize pool_sizes[] = {
 	    {
-	        .descriptorCount = 3,
+	        .descriptorCount = 100,
 	        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 	    },
 	    {
-	        .descriptorCount = 4,
+	        .descriptorCount = 100,
 	        .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 	    }
 	};
 
-	if (!vk_init_descriptor_pool(vk, pool_sizes, ARRAY_SIZE(pool_sizes), 3, &self->descriptor_pool))
+	if (!vk_init_descriptor_pool(vk, pool_sizes, ARRAY_SIZE(pool_sizes), 5, &self->descriptor_pool))
 		return false;
 
 	for (uint32_t eye = 0; eye < 2; eye++) {

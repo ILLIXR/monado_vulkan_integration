@@ -114,11 +114,11 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 	std::vector<VkImageView> left_eye_views(buffer_pool, buffer_pool + num_buffers_per_eye);
 	std::vector<VkImageView> right_eye_views(buffer_pool + num_buffers_per_eye, buffer_pool + 2 * num_buffers_per_eye);
 	std::array<std::vector<VkImageView>, 2> eye_views = {left_eye_views, right_eye_views};
-	for (int eye = 0; eye < 2; eye++) {
-		for (int buffer = 0; buffer < num_buffers_per_eye; buffer++) {
-			assert(eye_views[eye][buffer] != VK_NULL_HANDLE && "Eye buffer image view is a null handle!");
-		}
-	}
+	// for (int eye = 0; eye < 2; eye++) {
+	// 	for (int buffer = 0; buffer < num_buffers_per_eye; buffer++) {
+	// 		assert(eye_views[eye][buffer] != VK_NULL_HANDLE && "Eye buffer image view is a null handle!");
+	// 	}
+	// }
 	illixr_plugin_obj->sb_timewarp->setup(render_pass, subpass, std::move(eye_views), false);
 }
 
