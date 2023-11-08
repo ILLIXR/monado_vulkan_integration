@@ -26,7 +26,6 @@ void main ()
 {
 	vec2 uv_sub = vec2(ubo.offset) + uv * vec2(ubo.extent);
 	uv_sub /= textureSize(image, 0);
-	out_color.xyz = vec3(texture(depth, uv_sub).r); // texture(image, uv_sub);
-	out_color.a = 1.0f;
-	gl_FragDepth = 10.0f; // texture(depth, uv_sub).r;
+	out_color = texture(image, uv_sub);
+	gl_FragDepth = texture(depth, uv_sub).r;
 }
