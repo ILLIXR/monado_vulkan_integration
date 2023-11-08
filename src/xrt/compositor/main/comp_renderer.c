@@ -554,8 +554,8 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 	// Initialize ILLIXR timewarp
 	if (strcmp(r->c->xdev->str, "ILLIXR") == 0) {
 		VkImageView buffers[2];
-		buffers[0] = r->lr->framebuffers[0].view;
-		buffers[1] = r->lr->framebuffers[1].view;
+		buffers[0] = r->lr->framebuffers[0].depth_view;
+		buffers[1] = r->lr->framebuffers[1].depth_view;
 		
 		illixr_initialize_timewarp(r->rtr_array[0].render_pass, 0, buffers, 1);
 
