@@ -49,33 +49,37 @@ _init_render_pass(struct vk_bundle *vk,
 		.flags = 0,
 	};
 
-	// "Fake" depth attachment
 	VkAttachmentDescription depth_attachment = {
-		.format = VK_FORMAT_R16_UNORM,
+		.format = VK_FORMAT_D32_SFLOAT,
 		.samples = VK_SAMPLE_COUNT_1_BIT,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-		.finalLayout = final_layout,
+		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
 		.flags = 0,
 	};
 
 	VkAttachmentDescription attachments[2] = {image_attachment, depth_attachment};
 
-	VkAttachmentReference image_ref = {
-		.attachment = 0,
-		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-	};
+	VkSubpassDependency dependencies[2];
 
-	VkAttachmentReference depth_ref = {
-		.attachment = 1,
-		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-	};
+	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[0].dstSubpass = 0;
+	dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-
-	VkAttachmentReference attachment_refs[2] = {image_ref, depth_ref};
+	dependencies[1].srcSubpass = 0;
+	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 	VkRenderPassCreateInfo renderpass_info = {
 	    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
@@ -86,17 +90,21 @@ _init_render_pass(struct vk_bundle *vk,
 	    .pSubpasses =
 	        &(VkSubpassDescription){
 	            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-	            .colorAttachmentCount = 2,
-	            .pColorAttachments = attachment_refs,
-	            .pDepthStencilAttachment = NULL,
-					// &(VkAttachmentReference){
-					// 	.attachment = 1,
-					// 	.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-					// },
+	            .colorAttachmentCount = 1,
+	            .pColorAttachments =
+	                &(VkAttachmentReference){
+	                    .attachment = 0,
+	                    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	                },
+	            .pDepthStencilAttachment = 
+					&(VkAttachmentReference){
+						.attachment = 1,
+						.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+					},
 	            .pResolveAttachments = NULL,
 	        },
-	    .dependencyCount = 0,
-	    .pDependencies = NULL,
+	    .dependencyCount = 2,
+	    .pDependencies = dependencies,
 	};
 
 	VkResult res = vk->vkCreateRenderPass(vk->device, &renderpass_info, NULL, out_render_pass);
@@ -266,8 +274,142 @@ _init_graphics_pipeline(struct comp_layer_renderer *self,
 	        &(VkPipelineDepthStencilStateCreateInfo){
 	            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
 	            .depthTestEnable = VK_FALSE,
-	            .depthWriteEnable = VK_TRUE,
+	            .depthWriteEnable = VK_FALSE,
 	            .depthCompareOp = VK_COMPARE_OP_NEVER,
+	        },
+	    .blend_attachments =
+	        &(VkPipelineColorBlendAttachmentState){
+	            .blendEnable = VK_TRUE,
+	            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+	                              VK_COLOR_COMPONENT_A_BIT,
+	            .srcColorBlendFactor = blend_factor,
+	            .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+	            .colorBlendOp = VK_BLEND_OP_ADD,
+	            .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+	            .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+	            .alphaBlendOp = VK_BLEND_OP_ADD,
+	        },
+	    .rasterization_state =
+	        &(VkPipelineRasterizationStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+	            .polygonMode = VK_POLYGON_MODE_FILL,
+	            .cullMode = VK_CULL_MODE_BACK_BIT,
+	            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+	            .lineWidth = 1.0f,
+	        },
+	};
+
+	VkPipelineShaderStageCreateInfo shader_stages[2] = {
+	    {
+	        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+	        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+	        .module = shader_vert,
+	        .pName = "main",
+	    },
+	    {
+	        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+	        .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+	        .module = shader_frag,
+	        .pName = "main",
+	    },
+	};
+
+	VkGraphicsPipelineCreateInfo pipeline_info = {
+	    .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+	    .layout = self->pipeline_layout,
+	    .pVertexInputState =
+	        &(VkPipelineVertexInputStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+	            .pVertexAttributeDescriptions = config.attribs,
+	            .vertexBindingDescriptionCount = 1,
+	            .pVertexBindingDescriptions =
+	                &(VkVertexInputBindingDescription){
+	                    .binding = 0,
+	                    .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+	                    .stride = config.stride,
+	                },
+	            .vertexAttributeDescriptionCount = config.attrib_count,
+	        },
+	    .pInputAssemblyState =
+	        &(VkPipelineInputAssemblyStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+	            .topology = config.topology,
+	            .primitiveRestartEnable = VK_FALSE,
+	        },
+	    .pViewportState =
+	        &(VkPipelineViewportStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+	            .viewportCount = 1,
+	            .scissorCount = 1,
+	        },
+	    .pRasterizationState = config.rasterization_state,
+	    .pMultisampleState =
+	        &(VkPipelineMultisampleStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+	            .rasterizationSamples = self->sample_count,
+	            .minSampleShading = 0.0f,
+	            .pSampleMask = &(uint32_t){0xFFFFFFFF},
+	            .alphaToCoverageEnable = VK_FALSE,
+	        },
+	    .pDepthStencilState = config.depth_stencil_state,
+	    .pColorBlendState =
+	        &(VkPipelineColorBlendStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+	            .logicOpEnable = VK_FALSE,
+	            .attachmentCount = 1,
+	            .blendConstants = {0, 0, 0, 0},
+	            .pAttachments = config.blend_attachments,
+	        },
+	    .stageCount = 2,
+	    .pStages = shader_stages,
+	    .renderPass = self->render_pass,
+	    .pDynamicState =
+	        &(VkPipelineDynamicStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+	            .dynamicStateCount = 2,
+	            .pDynamicStates =
+	                (VkDynamicState[]){
+	                    VK_DYNAMIC_STATE_VIEWPORT,
+	                    VK_DYNAMIC_STATE_SCISSOR,
+	                },
+	        },
+	    .subpass = 0,
+	};
+
+	VkResult res;
+	res = vk->vkCreateGraphicsPipelines(vk->device, self->pipeline_cache, 1, &pipeline_info, NULL, pipeline);
+
+	vk_check_error("vkCreateGraphicsPipelines", res, false);
+
+	return true;
+}
+
+static bool
+_init_graphics_pipeline_depth(struct comp_layer_renderer *self,
+                        VkShaderModule shader_vert,
+                        VkShaderModule shader_frag,
+                        bool premultiplied_alpha,
+                        VkPipeline *pipeline)
+{
+	struct vk_bundle *vk = self->vk;
+
+	VkBlendFactor blend_factor = premultiplied_alpha ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
+
+	struct comp_pipeline_config config = {
+	    .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	    .stride = sizeof(struct comp_layer_vertex),
+	    .attribs =
+	        (VkVertexInputAttributeDescription[]){
+	            {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0},
+	            {1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(struct comp_layer_vertex, uv)},
+	        },
+	    .attrib_count = 2,
+	    .depth_stencil_state =
+	        &(VkPipelineDepthStencilStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+	            .depthTestEnable = VK_TRUE,
+	            .depthWriteEnable = VK_TRUE,
+	            .depthCompareOp = VK_COMPARE_OP_LESS,
 	        },
 	    .blend_attachments =
 	        &(VkPipelineColorBlendAttachmentState){
@@ -379,12 +521,12 @@ _init_graphics_pipeline(struct comp_layer_renderer *self,
 // clang-format off
 #define PLANE_VERTICES 6
 static float plane_vertices[PLANE_VERTICES * 5] = {
-	-0.5, -0.5, 0, 0, 1,
-	 0.5, -0.5, 0, 1, 1,
-	 0.5,  0.5, 0, 1, 0,
-	 0.5,  0.5, 0, 1, 0,
-	-0.5,  0.5, 0, 0, 0,
-	-0.5, -0.5, 0, 0, 1,
+	-0.5, -0.5, 1, 0, 1,
+	 0.5, -0.5, 1, 1, 1,
+	 0.5,  0.5, 1, 1, 0,
+	 0.5,  0.5, 1, 1, 0,
+	-0.5,  0.5, 1, 0, 0,
+	-0.5, -0.5, 1, 0, 1,
 };
 
 // clang-format on
@@ -488,17 +630,17 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 
 	vk_check_error("vk_create_view", res, false);
 
-	VkFormat depth_format = VK_FORMAT_R16_UNORM;
+	VkFormat depth_format = VK_FORMAT_D32_SFLOAT;
 
 	VkImageUsageFlags depth_usage =                   //
-	    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | //
+	    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | //
 	    VK_IMAGE_USAGE_SAMPLED_BIT;
 
 	res = vk_create_image_simple(vk, self->extent, depth_format, depth_usage, &self->framebuffers[eye].depth_memory,
 	                             &self->framebuffers[eye].depth_image);
 
 	VkImageSubresourceRange depth_range = {
-	    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+	    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
 	    .baseMipLevel = 0,
 	    .levelCount = 1,
 	    .baseArrayLayer = 0,
@@ -622,7 +764,7 @@ _init(struct comp_layer_renderer *self,
 	}
 
 #if defined(XRT_FEATURE_OPENXR_LAYER_DEPTH)
-	if (!_init_graphics_pipeline(self, s->depth_vert, s->depth_frag, true, &self->pipeline_depth)) {
+	if (!_init_graphics_pipeline_depth(self, s->depth_vert, s->depth_frag, true, &self->pipeline_depth)) {
 		return false;
 	}
 #endif
@@ -675,7 +817,10 @@ _render_pass_begin(struct vk_bundle *vk,
 	                .color = clear_color,
 	            },
 	            {
-	                .color = clear_color,
+	                .depthStencil = {
+						.depth = 1.0f,
+						.stencil = 0,
+					}
 	            },
 	        },
 	};

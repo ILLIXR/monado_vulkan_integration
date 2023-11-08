@@ -18,16 +18,15 @@ layout (set = 1, binding = 0) uniform sampler2D depth;
 
 layout (location = 0)  in vec2 uv;
 layout (location = 0) out vec4 out_color;
-layout (location = 1) out vec4 out_depth;
 
 // assume it may be modified in any way
-// layout(depth_any) out float FragDepth;
+layout(depth_any) out float gl_FragDepth;
 
 void main ()
 {
 	vec2 uv_sub = vec2(ubo.offset) + uv * vec2(ubo.extent);
 	uv_sub /= textureSize(image, 0);
-	out_color = vec4(1.0f, 0.0f, 0.0f, 1.0); // texture(image, uv_sub);
+	out_color.xyz = vec3(texture(depth, uv_sub).r); // texture(image, uv_sub);
 	out_color.a = 1.0f;
-	out_depth.r = 128; // texture(depth, uv_sub).r;
+	gl_FragDepth = 10.0f; // texture(depth, uv_sub).r;
 }
