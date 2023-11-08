@@ -49,37 +49,33 @@ _init_render_pass(struct vk_bundle *vk,
 		.flags = 0,
 	};
 
+	// "Fake" depth attachment
 	VkAttachmentDescription depth_attachment = {
-		.format = VK_FORMAT_D16_UNORM,
+		.format = VK_FORMAT_R16_UNORM,
 		.samples = VK_SAMPLE_COUNT_1_BIT,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+		.finalLayout = final_layout,
 		.flags = 0,
 	};
 
 	VkAttachmentDescription attachments[2] = {image_attachment, depth_attachment};
 
-	VkSubpassDependency dependencies[2];
+	VkAttachmentReference image_ref = {
+		.attachment = 0,
+		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	};
 
-	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependencies[0].dstSubpass = 0;
-	dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+	VkAttachmentReference depth_ref = {
+		.attachment = 1,
+		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	};
 
-	dependencies[1].srcSubpass = 0;
-	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-	dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	VkAttachmentReference attachment_refs[2] = {image_ref, depth_ref};
 
 	VkRenderPassCreateInfo renderpass_info = {
 	    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
@@ -90,21 +86,17 @@ _init_render_pass(struct vk_bundle *vk,
 	    .pSubpasses =
 	        &(VkSubpassDescription){
 	            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-	            .colorAttachmentCount = 1,
-	            .pColorAttachments =
-	                &(VkAttachmentReference){
-	                    .attachment = 0,
-	                    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-	                },
-	            .pDepthStencilAttachment = 
-					&(VkAttachmentReference){
-						.attachment = 1,
-						.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-					},
+	            .colorAttachmentCount = 2,
+	            .pColorAttachments = attachment_refs,
+	            .pDepthStencilAttachment = NULL,
+					// &(VkAttachmentReference){
+					// 	.attachment = 1,
+					// 	.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+					// },
 	            .pResolveAttachments = NULL,
 	        },
-	    .dependencyCount = 2,
-	    .pDependencies = dependencies,
+	    .dependencyCount = 0,
+	    .pDependencies = NULL,
 	};
 
 	VkResult res = vk->vkCreateRenderPass(vk->device, &renderpass_info, NULL, out_render_pass);
@@ -456,6 +448,12 @@ _render_eye(struct comp_layer_renderer *self,
 			comp_layer_draw(self->layers[i], eye, pipeline, pipeline_layout, cmd_buffer, vertex_buffer,
 			                &vp_inv, &vp_inv);
 #endif
+#if defined(XRT_FEATURE_OPENXR_LAYER_DEPTH)
+		} else if (self->layers[i]->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
+			pipeline = self->pipeline_depth;
+			comp_layer_draw(self->layers[i], eye, pipeline, pipeline_layout, cmd_buffer, vertex_buffer,
+			                &vp_inv, &vp_inv);
+#endif
 		} else {
 			comp_layer_draw(self->layers[i], eye, pipeline, pipeline_layout, cmd_buffer, vertex_buffer,
 			                &vp_world, &vp_eye);
@@ -490,17 +488,17 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 
 	vk_check_error("vk_create_view", res, false);
 
-	VkFormat depth_format = VK_FORMAT_D16_UNORM;
+	VkFormat depth_format = VK_FORMAT_R16_UNORM;
 
 	VkImageUsageFlags depth_usage =                   //
-	    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | //
+	    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | //
 	    VK_IMAGE_USAGE_SAMPLED_BIT;
 
 	res = vk_create_image_simple(vk, self->extent, depth_format, depth_usage, &self->framebuffers[eye].depth_memory,
 	                             &self->framebuffers[eye].depth_image);
 
 	VkImageSubresourceRange depth_range = {
-	    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+	    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
 	    .baseMipLevel = 0,
 	    .levelCount = 1,
 	    .baseArrayLayer = 0,
@@ -677,11 +675,7 @@ _render_pass_begin(struct vk_bundle *vk,
 	                .color = clear_color,
 	            },
 	            {
-	                .depthStencil =
-	                    {
-	                        .depth = 1.0f,
-	                        .stencil = 0,
-	                    },
+	                .color = clear_color,
 	            },
 	        },
 	};
