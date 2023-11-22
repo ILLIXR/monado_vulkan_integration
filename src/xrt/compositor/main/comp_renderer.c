@@ -337,14 +337,26 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * Viewport one
 	 */
 
-	// l_viewport_data.w *= 2;
+	l_viewport_data.w *= 2;
 	// render_gfx_begin_view(rr,                //
 	//                       0,                 // view_index
 	//                       &l_viewport_data); // viewport_data
+	VkRect2D left_span = {
+	    .offset =
+	        {
+	            .x = l_viewport_data.x,
+	            .y = l_viewport_data.y,
+	        },
+	    .extent =
+	        {
+	            .width = l_viewport_data.w,
+	            .height = l_viewport_data.h,
+	        },
+	};
 
 	// render_gfx_distortion(rr);
 
-	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 1);
+	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 1, left_span);
 
 	render_gfx_end_view(rr);
 
@@ -353,14 +365,26 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * Viewport two
 	 */
 
-	// r_viewport_data.w *= 2;
+	r_viewport_data.w *= 2;
 	// render_gfx_begin_view(rr,                //
 	//                       1,                 // view_index
 	//                       &r_viewport_data); // viewport_data
+	VkRect2D right_span = {
+	    .offset =
+	        {
+	            .x = r_viewport_data.x,
+	            .y = r_viewport_data.y,
+	        },
+	    .extent =
+	        {
+	            .width = r_viewport_data.w,
+	            .height = r_viewport_data.h,
+	        },
+	};
 
 	// render_gfx_distortion(rr);
 
-	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 0);
+	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 0, right_span);
 
 	render_gfx_end_view(rr);
 

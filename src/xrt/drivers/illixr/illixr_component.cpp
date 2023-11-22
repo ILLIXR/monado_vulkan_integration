@@ -132,10 +132,10 @@ extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {
 	illixr_plugin_obj->last_pose = pose;
 }
 
-extern "C" void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, VkFramebuffer framebuffer, int buffer_ind, int left) {
+extern "C" void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, VkFramebuffer framebuffer, int buffer_ind, int left, VkRect2D span) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 	illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->last_pose);
-	illixr_plugin_obj->sb_timewarp->record_command_buffer(commandBuffer, framebuffer, buffer_ind, left);
+	illixr_plugin_obj->sb_timewarp->record_command_buffer(commandBuffer, framebuffer, buffer_ind, left, span);
 }
 
 extern "C" void illixr_publish_vsync_estimate(uint64_t display_time_ns) {
