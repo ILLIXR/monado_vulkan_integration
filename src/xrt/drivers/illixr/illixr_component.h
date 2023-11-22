@@ -21,11 +21,11 @@ illixr_monado_create_plugin(void *pb);
 struct xrt_pose
 illixr_read_pose(void);
 
-void illixr_initialize_vulkan_display_service(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device, VkQueue queue, uint32_t queue_family_index);
+void illixr_initialize_vulkan_display_service(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device, VkQueue queue, uint32_t queue_family_index, VkExtent2D extent);
 void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t subpass, VkImageView* buffer_pool, uint32_t num_buffers);
 void illixr_destroy_timewarp(void);
 void illixr_tw_update_uniforms(struct xrt_pose l_pose, struct xrt_pose r_pose);
-void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, VkFramebuffer framebuffer, int buffer_ind, int left, VkRect2D span);
+void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, VkFramebuffer framebuffer, int buffer_ind, int left);
 void illixr_publish_vsync_estimate(uint64_t display_time_ns);
 
 #ifdef __cplusplus

@@ -337,26 +337,14 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * Viewport one
 	 */
 
-	l_viewport_data.w *= 2;
+	// l_viewport_data.w *= 2;
 	// render_gfx_begin_view(rr,                //
 	//                       0,                 // view_index
 	//                       &l_viewport_data); // viewport_data
-	VkRect2D left_span = {
-	    .offset =
-	        {
-	            .x = l_viewport_data.x,
-	            .y = l_viewport_data.y,
-	        },
-	    .extent =
-	        {
-	            .width = l_viewport_data.w,
-	            .height = l_viewport_data.h,
-	        },
-	};
 
 	// render_gfx_distortion(rr);
 
-	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 1, left_span);
+	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 1);
 
 	render_gfx_end_view(rr);
 
@@ -365,26 +353,14 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * Viewport two
 	 */
 
-	r_viewport_data.w *= 2;
+	// r_viewport_data.w *= 2;
 	// render_gfx_begin_view(rr,                //
 	//                       1,                 // view_index
 	//                       &r_viewport_data); // viewport_data
-	VkRect2D right_span = {
-	    .offset =
-	        {
-	            .x = r_viewport_data.x,
-	            .y = r_viewport_data.y,
-	        },
-	    .extent =
-	        {
-	            .width = r_viewport_data.w,
-	            .height = r_viewport_data.h,
-	        },
-	};
 
 	// render_gfx_distortion(rr);
 
-	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 0, right_span);
+	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 0);
 
 	render_gfx_end_view(rr);
 
@@ -578,6 +554,13 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 	renderer_create_renderings_and_fences(r);
 
 	assert(r->buffer_count != 0);
+
+	struct vk_bundle* vk = c->nr.vk;
+	VkExtent2D extent = {
+		.width = r->c->target->width,
+		.height = r->c->target->height,
+	};
+	illixr_initialize_vulkan_display_service(vk->instance, vk->physical_device, vk->device, vk->queue, vk->queue_family_index, extent);
 
 	// Initialize ILLIXR timewarp
 	if (strcmp(r->c->xdev->str, "ILLIXR") == 0) {

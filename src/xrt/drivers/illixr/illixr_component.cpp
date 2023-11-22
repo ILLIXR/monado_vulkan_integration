@@ -91,13 +91,14 @@ illixr_read_pose()
 	return ret;
 }
 
-extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device, VkQueue queue, uint32_t queue_family_index) {
+extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device, VkQueue queue, uint32_t queue_family_index, VkExtent2D extent) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 	auto ds = illixr_plugin_obj->ds;
 	ds->vk_instance = instance;
 	ds->vk_physical_device = physical_device;
 	ds->vk_device = device;
 	ds->queues[vulkan_utils::queue::GRAPHICS] = {queue, queue_family_index};
+	ds->swapchain_extent = extent;
 
 	illixr_plugin_obj->ds = ds;
 }
@@ -132,10 +133,10 @@ extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {
 	illixr_plugin_obj->last_pose = pose;
 }
 
-extern "C" void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, VkFramebuffer framebuffer, int buffer_ind, int left, VkRect2D span) {
+extern "C" void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, VkFramebuffer framebuffer, int buffer_ind, int left) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 	illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->last_pose);
-	illixr_plugin_obj->sb_timewarp->record_command_buffer(commandBuffer, framebuffer, buffer_ind, left, span);
+	illixr_plugin_obj->sb_timewarp->record_command_buffer(commandBuffer, framebuffer, buffer_ind, left);
 }
 
 extern "C" void illixr_publish_vsync_estimate(uint64_t display_time_ns) {
