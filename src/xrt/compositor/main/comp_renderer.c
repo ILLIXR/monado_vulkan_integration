@@ -346,7 +346,7 @@ renderer_build_rendering(struct comp_renderer *r,
 
 	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 1);
 
-	render_gfx_end_view(rr);
+	// render_gfx_end_view(rr);
 
 
 	/*
@@ -362,14 +362,14 @@ renderer_build_rendering(struct comp_renderer *r,
 
 	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 0);
 
-	render_gfx_end_view(rr);
+	// render_gfx_end_view(rr);
 
 
 	/*
 	 * End
 	 */
 
-	render_gfx_end_target(rr);
+	// render_gfx_end_target(rr);
 
 	// Make the command buffer usable.
 	render_gfx_end(rr);
