@@ -50,7 +50,7 @@ _init_render_pass(struct vk_bundle *vk,
 	};
 
 	VkAttachmentDescription depth_attachment = {
-		.format = VK_FORMAT_D32_SFLOAT,
+		.format = VK_FORMAT_D16_UNORM,
 		.samples = VK_SAMPLE_COUNT_1_BIT,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -409,7 +409,7 @@ _init_graphics_pipeline_depth(struct comp_layer_renderer *self,
 	            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
 	            .depthTestEnable = VK_TRUE,
 	            .depthWriteEnable = VK_TRUE,
-	            .depthCompareOp = VK_COMPARE_OP_LESS,
+	            .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
 	        },
 	    .blend_attachments =
 	        &(VkPipelineColorBlendAttachmentState){
@@ -630,7 +630,7 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 
 	vk_check_error("vk_create_view", res, false);
 
-	VkFormat depth_format = VK_FORMAT_D32_SFLOAT;
+	VkFormat depth_format = VK_FORMAT_D16_UNORM;
 
 	VkImageUsageFlags depth_usage =                   //
 	    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | //
