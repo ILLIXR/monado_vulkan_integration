@@ -651,7 +651,8 @@ vk_create_device(struct vk_bundle *vk,
                  VkQueueGlobalPriorityEXT global_priority,
                  struct u_string_list *required_device_ext_list,
                  struct u_string_list *optional_device_ext_list,
-                 const struct vk_device_features *optional_device_features);
+                 const struct vk_device_features *optional_device_features,
+                 struct u_string_list **out_list);
 
 /*!
  * @brief Initialize mutexes in the @ref vk_bundle.

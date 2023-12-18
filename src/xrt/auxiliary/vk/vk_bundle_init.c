@@ -21,6 +21,8 @@
 
 #include <stdio.h>
 
+#include "../../compositor/util/comp_vulkan.h"
+
 
 /*
  *
@@ -1008,7 +1010,8 @@ vk_create_device(struct vk_bundle *vk,
                  VkQueueGlobalPriorityEXT global_priority,
                  struct u_string_list *required_device_ext_list,
                  struct u_string_list *optional_device_ext_list,
-                 const struct vk_device_features *optional_device_features)
+                 const struct vk_device_features *optional_device_features,
+                 struct u_string_list **out_list)
 {
 	VkResult ret;
 
@@ -1022,6 +1025,7 @@ vk_create_device(struct vk_bundle *vk,
 	                             &device_ext_list)) {
 		return VK_ERROR_EXTENSION_NOT_PRESENT;
 	}
+	*out_list = device_ext_list;
 
 
 	/*
@@ -1130,7 +1134,6 @@ vk_create_device(struct vk_bundle *vk,
 
 	ret = vk->vkCreateDevice(vk->physical_device, &device_create_info, NULL, &vk->device);
 
-	u_string_list_destroy(&device_ext_list);
 
 	if (ret != VK_SUCCESS) {
 		VK_DEBUG(vk, "vkCreateDevice: %s (%d)", vk_result_string(ret), ret);

@@ -7,13 +7,22 @@
  * @ingroup drv_illixr
  */
 
+#define VMA_IMPLEMENTATION
+
+#include <atomic>
+#include <cassert>
+#include <chrono>
 
 #include "xrt/xrt_device.h"
+#include "util/u_string_list.h"
 
 #include <memory>
 #include <vulkan/vulkan.h>
 
 #include <iostream>
+#include <thread>
+#include <vector>
+
 #include "illixr/plugin.hpp"
 #include "illixr/phonebook.hpp"
 #include "illixr/switchboard.hpp"
@@ -32,6 +41,9 @@ class monado_vulkan_display_provider : public display_provider {
 
 };
 
+static std::atomic<bool> _ds_ready = false;
+static std::shared_ptr<display_provider> _ds_global = nullptr;
+
 /// Simulated plugin class for an instance during phonebook registration
 class illixr_plugin : public plugin
 {
@@ -41,12 +53,14 @@ public:
 		, sb{pb->lookup_impl<switchboard>()}
 		, sb_pose{pb->lookup_impl<pose_prediction>()}
 		, sb_clock{pb->lookup_impl<RelativeClock>()}
-		, ds{std::make_shared<monado_vulkan_display_provider>()}
+		, ds{_ds_global}
 		, _m_vsync{sb->get_writer<switchboard::event_wrapper<time_point>>("vsync_estimate")}
 	{
 		pb_->register_impl<display_provider>(std::static_pointer_cast<display_provider>(ds));
 		sb_timewarp = pb_->lookup_impl<timewarp>();
 	}
+
+	std::atomic<bool> ready = false;
 
 	const std::shared_ptr<switchboard> sb;
 	const std::shared_ptr<pose_prediction> sb_pose;
@@ -67,6 +81,12 @@ illixr_monado_create_plugin(phonebook *pb)
 	illixr_plugin_obj = new illixr_plugin{"illixr_plugin", pb};
 	illixr_plugin_obj->start();
 	return illixr_plugin_obj;
+}
+
+extern "C" void illixr_monado_wait_for_init(void) {
+	while (!_ds_ready) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	}
 }
 
 extern "C" struct xrt_pose
@@ -92,15 +112,29 @@ illixr_read_pose()
 	return ret;
 }
 
-extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device, VkQueue queue, uint32_t queue_family_index) {
-	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
-	auto ds = illixr_plugin_obj->ds;
+extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device, VkQueue queue, uint32_t queue_family_index, struct u_string_list *enabled_instance_extensions, struct u_string_list *enabled_device_extensions) {
+	auto ds = std::make_shared<monado_vulkan_display_provider>();
 	ds->vk_instance = instance;
 	ds->vk_physical_device = physical_device;
 	ds->vk_device = device;
 	ds->queues[queue::GRAPHICS] = {queue, queue_family_index};
 
-	illixr_plugin_obj->ds = ds;
+	const char *const *exts = u_string_list_get_data(enabled_instance_extensions);
+	uint32_t ext_count = u_string_list_get_size(enabled_instance_extensions);
+
+	for (uint32_t i = 0; i < ext_count; i++) {
+		ds->enabled_instance_extensions.push_back(exts[i]);
+	}
+
+	const char *const *dev_exts = u_string_list_get_data(enabled_device_extensions);
+	uint32_t dev_ext_count = u_string_list_get_size(enabled_device_extensions);
+
+	for (uint32_t i = 0; i < dev_ext_count; i++) {
+		ds->enabled_device_extensions.push_back(dev_exts[i]);
+	}
+
+	_ds_global = ds;
+	_ds_ready = true;
 }
 
 extern "C" void illixr_destroy_timewarp() {
@@ -109,33 +143,35 @@ extern "C" void illixr_destroy_timewarp() {
 }
 
 extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t subpass, VkImageView* buffer_pool, uint32_t num_buffers_per_eye) {
-	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
-	std::cout << PREFIX << "Initializing timewarp" << std::endl;
-	vulkan::buffer_pool<pose_type> buffer_pool_obj;
-	std::vector<VkImageView> left_eye_views(buffer_pool, buffer_pool + num_buffers_per_eye);
-	std::vector<VkImageView> right_eye_views(buffer_pool + num_buffers_per_eye, buffer_pool + 2 * num_buffers_per_eye);
-	std::array<std::vector<VkImageView>, 2> eye_views = {left_eye_views, right_eye_views};
-	illixr_plugin_obj->sb_timewarp->setup(render_pass, subpass, std::move(eye_views), false);
+	// assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	// std::cout << PREFIX << "Initializing timewarp" << std::endl;
+	// std::vector<std::array<vulkan::vk_image, 2>> = {{}};
+	// auto buffer_pool = std::make_shared<vulkan::buffer_pool<fast_pose_type>>();
+	//
+	// std::vector<VkImageView> left_eye_views(buffer_pool, buffer_pool + num_buffers_per_eye);
+	// std::vector<VkImageView> right_eye_views(buffer_pool + num_buffers_per_eye, buffer_pool + 2 * num_buffers_per_eye);
+	// std::array<std::vector<VkImageView>, 2> eye_views = {left_eye_views, right_eye_views};
+	// illixr_plugin_obj->sb_timewarp->setup(render_pass, subpass, std::move(eye_views), false);
 }
 
 extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {
-	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
-
-	pose_type pose {time_point{}, 
-					Eigen::Vector3f {(l_pose.position.x + r_pose.position.x) / 2, (l_pose.position.y + r_pose.position.y) / 2, (l_pose.position.z + r_pose.position.z) / 2},
-					Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
-					};
-	illixr_plugin_obj->last_pose = pose;
+	// assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	//
+	// pose_type pose {time_point{},
+	// 				Eigen::Vector3f {(l_pose.position.x + r_pose.position.x) / 2, (l_pose.position.y + r_pose.position.y) / 2, (l_pose.position.z + r_pose.position.z) / 2},
+	// 				Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
+	// 				};
+	// illixr_plugin_obj->last_pose = pose;
 }
 
 extern "C" void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, int buffer_ind, int left) {
-	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
-	illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->last_pose);
-	illixr_plugin_obj->sb_timewarp->record_command_buffer(commandBuffer, buffer_ind, left);
+	// assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	// illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->last_pose);
+	// illixr_plugin_obj->sb_timewarp->record_command_buffer(commandBuffer, buffer_ind, left);
 }
 
 extern "C" void illixr_publish_vsync_estimate(uint64_t display_time_ns) {
-	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
-	auto relative_time = time_point{time_point{std::chrono::nanoseconds(display_time_ns)} - illixr_plugin_obj->sb_clock->start_time()};
-	illixr_plugin_obj->_m_vsync.put(illixr_plugin_obj->_m_vsync.allocate<switchboard::event_wrapper<time_point>>(relative_time));
+	// assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	// auto relative_time = time_point{time_point{std::chrono::nanoseconds(display_time_ns)} - illixr_plugin_obj->sb_clock->start_time()};
+	// illixr_plugin_obj->_m_vsync.put(illixr_plugin_obj->_m_vsync.allocate<switchboard::event_wrapper<time_point>>(relative_time));
 }

@@ -160,6 +160,7 @@ illixr_rt_launch(struct illixr_hmd *dh, const char *path, const char *comp)
 {
 	dh->runtime_lib = new ILLIXR::dynamic_lib{ILLIXR::dynamic_lib::create(std::string{path})};
 	dh->runtime = dh->runtime_lib->get<ILLIXR::runtime *(*)()>("runtime_factory")();
+	illixr_monado_wait_for_init();
 	dh->runtime->load_so(split(std::string{comp}, ':'));
 	dh->runtime->load_plugin_factory((ILLIXR::plugin_factory)illixr_monado_create_plugin);
 
