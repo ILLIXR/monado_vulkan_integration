@@ -26,7 +26,10 @@ struct comp_layer_renderer
 		VkDeviceMemory memory;
 		VkImageView view;
 		VkFramebuffer handle;
-	} framebuffers[2];
+		VkDeviceSize size;
+		VkDeviceSize offset;
+		VkExtent2D extent;
+	} framebuffers[2 * OFFLOAD_BUFFER_POOL_SIZE];
 
 	struct vk_cmd_pool pool;
 

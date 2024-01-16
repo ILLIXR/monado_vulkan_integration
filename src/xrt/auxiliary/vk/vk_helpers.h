@@ -807,6 +807,16 @@ vk_create_image_simple(struct vk_bundle *vk,
                        VkDeviceMemory *out_mem,
                        VkImage *out_image);
 
+VkResult
+vk_create_image_exported(struct vk_bundle *vk,
+					   VkExtent2D extent,
+					   VkFormat format,
+					   VkImageUsageFlags usage,
+					   VkDeviceMemory *out_mem,
+					   VkDeviceSize *out_size,
+					   VkDeviceSize *out_offset,
+					   VkImage *out_image);
+
 /*!
  * Helper to create a mutable RG88B8A8 VkImage that specializes in the two
  * UNORM and SRGB variants of that formats.

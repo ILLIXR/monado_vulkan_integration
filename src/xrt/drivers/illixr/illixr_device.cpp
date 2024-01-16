@@ -160,7 +160,6 @@ illixr_rt_launch(struct illixr_hmd *dh, const char *path, const char *comp)
 {
 	dh->runtime_lib = new ILLIXR::dynamic_lib{ILLIXR::dynamic_lib::create(std::string{path})};
 	dh->runtime = dh->runtime_lib->get<ILLIXR::runtime *(*)()>("runtime_factory")();
-	illixr_monado_wait_for_init();
 	dh->runtime->load_so(split(std::string{comp}, ':'));
 	dh->runtime->load_plugin_factory((ILLIXR::plugin_factory)illixr_monado_create_plugin);
 
@@ -180,6 +179,8 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 	dh->base.destroy = illixr_hmd_destroy;
 	dh->base.name = XRT_DEVICE_GENERIC_HMD;
 	dh->base.device_type = XRT_DEVICE_TYPE_HMD;
+
+	dh->base.hmd->screens[0].nominal_frame_interval_ns = 1000000000 / 160;
 
 	size_t idx = 0;
 	dh->base.hmd->blend_modes[idx++] = XRT_BLEND_MODE_OPAQUE;

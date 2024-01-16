@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "../drivers/illixr/illixr_component.h"
 
 struct comp_layer_vertex
 {
@@ -414,8 +415,12 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 	    VK_IMAGE_USAGE_SAMPLED_BIT |          //
 	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT;      //
 
-	VkResult res = vk_create_image_simple(vk, self->extent, format, usage, &self->framebuffers[eye].memory,
-	                                      &self->framebuffers[eye].image);
+	VkResult res = vk_create_image_exported(vk, self->extent, format, usage,
+		&self->framebuffers[eye].memory,
+		&self->framebuffers[eye].size,
+		&self->framebuffers[eye].offset,
+	    &self->framebuffers[eye].image);
+	self->framebuffers[eye].extent = self->extent;
 	vk_check_error("vk_create_image_simple", res, false);
 
 	VkImageSubresourceRange subresource_range = {
@@ -509,7 +514,7 @@ _init(struct comp_layer_renderer *self,
 	                       &self->render_pass))
 		return false;
 
-	for (uint32_t i = 0; i < 2; i++)
+	for (uint32_t i = 0; i < 2 * OFFLOAD_BUFFER_POOL_SIZE; i++)
 		if (!_init_frame_buffer(self, format, self->render_pass, i))
 			return false;
 
@@ -603,7 +608,7 @@ static void
 _render_stereo(struct comp_layer_renderer *self,
                struct vk_bundle *vk,
                VkCommandBuffer cmd_buffer,
-               const VkClearColorValue *color)
+               const VkClearColorValue *color, uint8_t ind)
 {
 	COMP_TRACE_MARKER();
 
@@ -618,7 +623,7 @@ _render_stereo(struct comp_layer_renderer *self,
 	vk->vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
 
 	for (uint32_t eye = 0; eye < 2; eye++) {
-		_render_pass_begin(vk, self->render_pass, self->extent, *color, self->framebuffers[eye].handle,
+		_render_pass_begin(vk, self->render_pass, self->extent, *color, self->framebuffers[ind * 2 + eye].handle,
 		                   cmd_buffer);
 
 		_render_eye(self, eye, cmd_buffer, self->pipeline_layout);
@@ -636,6 +641,8 @@ comp_layer_renderer_draw(struct comp_layer_renderer *self)
 	struct vk_bundle *vk = self->vk;
 	struct vk_cmd_pool *pool = &self->pool;
 
+	uint8_t ind = illixr_src_acquire();
+
 	// Writing and submitting commands.
 	vk_cmd_pool_lock(pool);
 
@@ -647,13 +654,30 @@ comp_layer_renderer_draw(struct comp_layer_renderer *self)
 	}
 
 	if (self->layer_count == 0) {
-		_render_stereo(self, vk, cmd_buffer, &background_color_idle);
+		_render_stereo(self, vk, cmd_buffer, &background_color_idle, ind);
 	} else {
-		_render_stereo(self, vk, cmd_buffer, &background_color_active);
+		_render_stereo(self, vk, cmd_buffer, &background_color_active, ind);
 	}
 
 	// Done writing commands, submit to queue, waits for command to finish.
 	ret = vk_cmd_pool_end_submit_wait_and_free_cmd_buffer_locked(vk, pool, cmd_buffer);
+
+	struct comp_render_layer *layer;
+	for (int i = 0; i < self->layer_count; i++) {
+		layer = self->layers[i];
+		if (layer->type == XRT_LAYER_STEREO_PROJECTION) {
+			break;
+		}
+	}
+
+	if (layer) {
+		illixr_src_release(ind, layer->l_pose, layer->r_pose);
+	} else {
+		struct xrt_pose l_pose = {0};
+		struct xrt_pose r_pose = {0};
+		illixr_src_release(ind, l_pose, r_pose);
+		printf("WARNING: no projection layer found\n");
+	}
 
 	// Done submitting commands.
 	vk_cmd_pool_unlock(pool);

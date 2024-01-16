@@ -158,8 +158,7 @@ fill_in_results(struct vk_bundle *vk, const struct comp_vulkan_arguments *vk_arg
  */
 
 static VkResult
-create_instance(struct vk_bundle *vk, struct comp_vulkan_arguments *vk_args)
-
+create_instance(struct vk_bundle *vk, struct comp_vulkan_arguments *vk_args) {
 	VkResult ret;
 
 	assert(vk_args->required_instance_version != 0);

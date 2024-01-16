@@ -15,6 +15,8 @@
 
 #include "xrt/xrt_results.h"
 
+#define OFFLOAD_BUFFER_POOL_SIZE 3
+
 #ifdef __cplusplus
 extern "C" {
 #endif
