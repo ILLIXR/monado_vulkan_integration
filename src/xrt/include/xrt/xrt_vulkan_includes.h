@@ -18,9 +18,9 @@
 #include "xrt/xrt_windows.h"
 
 #define VK_NO_PROTOTYPES
-#define VK_ENABLE_BETA_EXTENSIONS 1
+// #define VK_ENABLE_BETA_EXTENSIONS 1
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_beta.h>
+// #include <vulkan/vulkan_beta.h>
 
 // Dealing with underscore compat.
 #ifndef VK_KHR_MAINTENANCE_1_EXTENSION_NAME
