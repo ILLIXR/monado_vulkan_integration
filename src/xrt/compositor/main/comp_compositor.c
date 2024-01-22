@@ -303,8 +303,8 @@ do_graphics_layers(struct comp_compositor *c)
 			left_depth = &layer->sc_array[2]->images[stereo->l_d.sub.image_index];
 			right_depth = &layer->sc_array[3]->images[stereo->r_d.sub.image_index];
 
-			printf("Left Image: %d, Left Depth: %d", stereo->l.sub.image_index, stereo->l_d.sub.image_index);
-			printf("Right Image: %d, Right Depth: %d", stereo->r.sub.image_index, stereo->r_d.sub.image_index);
+			// printf("Left Image: %d, Left Depth: %d\n", stereo->l.sub.image_index, stereo->l_d.sub.image_index);
+			// printf("Right Image: %d, Right Depth: %d\n", stereo->r.sub.image_index, stereo->r_d.sub.image_index);
 
 			comp_renderer_set_projection_depth_layer(c->r, i, left, right, left_depth, right_depth, data);
 		} break;
