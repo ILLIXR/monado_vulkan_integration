@@ -917,7 +917,9 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		comp_target_mark_submit(ct, c->frame.rendering.id, os_monotonic_get_ns());
 
 		renderer_get_view_projection(r);
-		comp_layer_renderer_draw(r->lr);
+
+		uint8_t ind = illixr_src_acquire();
+		comp_layer_renderer_draw(r->lr, ind);
 
 		VkSampler clamp_to_border_black = r->c->nr.samplers.clamp_to_border_black;
 		VkSampler src_samplers[2] = {
@@ -925,8 +927,8 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		    clamp_to_border_black,
 		};
 		VkImageView src_image_views[2] = {
-		    r->lr->framebuffers[0].view,
-		    r->lr->framebuffers[1].view,
+		    r->lr->framebuffers[ind * 2].view,
+		    r->lr->framebuffers[ind * 2 + 1].view,
 		};
 
 		struct xrt_normalized_rect src_norm_rects[2] = {

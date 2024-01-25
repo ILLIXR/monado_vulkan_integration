@@ -633,15 +633,13 @@ _render_stereo(struct comp_layer_renderer *self,
 }
 
 void
-comp_layer_renderer_draw(struct comp_layer_renderer *self)
+comp_layer_renderer_draw(struct comp_layer_renderer *self, int8_t ind)
 {
 	COMP_TRACE_MARKER();
 	VkResult ret;
 
 	struct vk_bundle *vk = self->vk;
 	struct vk_cmd_pool *pool = &self->pool;
-
-	uint8_t ind = illixr_src_acquire();
 
 	// Writing and submitting commands.
 	vk_cmd_pool_lock(pool);
