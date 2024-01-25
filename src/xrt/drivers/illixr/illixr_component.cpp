@@ -121,7 +121,7 @@ extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, Vk
 	ds->vk_instance = instance;
 	ds->vk_physical_device = physical_device;
 	ds->vk_device = device;
-	ds->queues[queue::GRAPHICS] = {queue, queue_family_index};
+	ds->queues[queue::GRAPHICS] = {queue, queue_family_index, std::make_shared<std::mutex>()};
 
 	const char* const * exts = u_string_list_get_data(enabled_instance_extensions);
 	uint32_t ext_count = u_string_list_get_size(enabled_instance_extensions);
