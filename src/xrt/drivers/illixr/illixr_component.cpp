@@ -32,6 +32,8 @@
 #include "illixr/vk/display_provider.hpp"
 #include "illixr/vk/vulkan_objects.hpp"
 
+#include <mutex>
+
 using namespace ILLIXR;
 using namespace ILLIXR::vulkan;
 
