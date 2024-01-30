@@ -266,45 +266,45 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * Update
 	 */
 
-	// struct render_gfx_mesh_ubo_data distortion_data[2] = {
-	//     {
-	//         .vertex_rot = l_v->rot,
-	//         .post_transform = src_norm_rects[0],
-	//     },
-	//     {
-	//         .vertex_rot = r_v->rot,
-	//         .post_transform = src_norm_rects[1],
-	//     },
-	// };
+	struct render_gfx_mesh_ubo_data distortion_data[2] = {
+	    {
+	        .vertex_rot = l_v->rot,
+	        .post_transform = src_norm_rects[0],
+	    },
+	    {
+	        .vertex_rot = r_v->rot,
+	        .post_transform = src_norm_rects[1],
+	    },
+	};
 
-	// const struct xrt_matrix_2x2 rotation_90_cw = {{
-	//     .vecs =
-	//         {
-	//             {0, 1},
-	//             {-1, 0},
-	//         },
-	// }};
+	const struct xrt_matrix_2x2 rotation_90_cw = {{
+	    .vecs =
+	        {
+	            {0, 1},
+	            {-1, 0},
+	        },
+	}};
 
-	// if (pre_rotate) {
-	// 	m_mat2x2_multiply(&distortion_data[0].vertex_rot,  //
-	// 	                  &rotation_90_cw,                 //
-	// 	                  &distortion_data[0].vertex_rot); //
-	// 	m_mat2x2_multiply(&distortion_data[1].vertex_rot,  //
-	// 	                  &rotation_90_cw,                 //
-	// 	                  &distortion_data[1].vertex_rot); //
-	// }
+	if (pre_rotate) {
+		m_mat2x2_multiply(&distortion_data[0].vertex_rot,  //
+		                  &rotation_90_cw,                 //
+		                  &distortion_data[0].vertex_rot); //
+		m_mat2x2_multiply(&distortion_data[1].vertex_rot,  //
+		                  &rotation_90_cw,                 //
+		                  &distortion_data[1].vertex_rot); //
+	}
 
-	// render_gfx_update_distortion(rr,                   //
-	//                              0,                    // view_index
-	//                              src_samplers[0],      //
-	//                              src_image_views[0],   //
-	//                              &distortion_data[0]); //
+	render_gfx_update_distortion(rr,                   //
+	                             0,                    // view_index
+	                             src_samplers[0],      //
+	                             src_image_views[0],   //
+	                             &distortion_data[0]); //
 
-	// render_gfx_update_distortion(rr,                   //
-	//                              1,                    // view_index
-	//                              src_samplers[1],      //
-	//                              src_image_views[1],   //
-	//                              &distortion_data[1]); //
+	render_gfx_update_distortion(rr,                   //
+	                             1,                    // view_index
+	                             src_samplers[1],      //
+	                             src_image_views[1],   //
+	                             &distortion_data[1]); //
 
 	// ILLIXR: get pose from projection layer
 	struct comp_render_layer *layer;
@@ -315,11 +315,11 @@ renderer_build_rendering(struct comp_renderer *r,
 		}
 	}
 
-	if (layer) {
-		illixr_tw_update_uniforms(layer->l_pose, layer->r_pose);
-	} else {
-		printf("WARNING: no projection layer found\n");
-	}
+	// if (layer) {
+	// 	illixr_tw_update_uniforms(layer->l_pose, layer->r_pose);
+	// } else {
+	// 	printf("WARNING: no projection layer found\n");
+	// }
 
 	/*
 	 * Target
@@ -342,9 +342,9 @@ renderer_build_rendering(struct comp_renderer *r,
 	//                       0,                 // view_index
 	//                       &l_viewport_data); // viewport_data
 
-	// render_gfx_distortion(rr);
+	render_gfx_distortion(rr);
 
-	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 1);
+	// illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 1);
 
 	// render_gfx_end_view(rr);
 
@@ -358,9 +358,9 @@ renderer_build_rendering(struct comp_renderer *r,
 	//                       1,                 // view_index
 	//                       &r_viewport_data); // viewport_data
 
-	// render_gfx_distortion(rr);
+	render_gfx_distortion(rr);
 
-	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 0);
+	// illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 0);
 
 	// render_gfx_end_view(rr);
 
@@ -571,12 +571,41 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 		// illixr_initialize_timewarp(r->rtr_array[0].render_pass, 0, buffers, 1);
 
 		// OpenWarp also wants the depth image view
-		VkImageView buffers[4];
-		buffers[0] = r->lr->framebuffers[0].view;
-		buffers[1] = r->lr->framebuffers[0].depth_view;
-		buffers[2] = r->lr->framebuffers[1].view;
-		buffers[3] = r->lr->framebuffers[1].depth_view;
-		illixr_initialize_timewarp(r->rtr_array[0].render_pass, 0, buffers, 2);
+		// VkImageView buffers[4];
+		// buffers[0] = r->lr->framebuffers[0].view;
+		// buffers[1] = r->lr->framebuffers[0].depth_view;
+		// buffers[2] = r->lr->framebuffers[1].view;
+		// buffers[3] = r->lr->framebuffers[1].depth_view;
+		// illixr_initialize_timewarp(r->rtr_array[0].render_pass, 0, buffers, 2);
+
+
+		// Each pair of images is a color + depth image
+		VkImage images[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
+		VkImageView image_view[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
+		VkDeviceMemory device_memory[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
+		VkDeviceSize size[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
+		VkDeviceSize offset[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
+
+		
+		for (int i = 0; i < 2 * OFFLOAD_BUFFER_POOL_SIZE * 2; i += 2) {
+			images[i] = r->lr->framebuffers[i].image;
+			images[i + 1] = r->lr->framebuffers[i].depth_image;
+
+			image_view[i] = r->lr->framebuffers[i].view;
+			image_view[i + 1] = r->lr->framebuffers[i].depth_view;
+			
+			device_memory[i] = r->lr->framebuffers[i].memory;
+			device_memory[i + 1] = r->lr->framebuffers[i].depth_memory;
+
+			size[i] = r->lr->framebuffers[i].size;
+			size[i + 1] = r->lr->framebuffers[i].depth_size;
+
+			offset[i] = r->lr->framebuffers[i].offset;
+			offset[i + 1] = r->lr->framebuffers[i].depth_offset;
+		}
+
+
+		illixr_initialize_timewarp(r->lr->render_pass, 0, r->lr->framebuffers[0].extent, images, image_view, device_memory, size, offset, OFFLOAD_BUFFER_POOL_SIZE);
 	}
 
 	return true;
@@ -928,7 +957,9 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		comp_target_mark_submit(ct, c->frame.rendering.id, os_monotonic_get_ns());
 
 		renderer_get_view_projection(r);
-		comp_layer_renderer_draw(r->lr);
+
+		uint8_t ind = illixr_src_acquire();
+		comp_layer_renderer_draw(r->lr, ind);
 
 		VkSampler clamp_to_border_black = r->c->nr.samplers.clamp_to_border_black;
 		VkSampler src_samplers[2] = {
@@ -936,8 +967,8 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		    clamp_to_border_black,
 		};
 		VkImageView src_image_views[2] = {
-		    r->lr->framebuffers[0].view,
-		    r->lr->framebuffers[1].view,
+		    r->lr->framebuffers[ind * 2].view,
+		    r->lr->framebuffers[ind * 2 + 1].view,
 		};
 
 		struct xrt_normalized_rect src_norm_rects[2] = {

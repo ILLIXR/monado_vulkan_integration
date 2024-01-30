@@ -730,7 +730,7 @@ compositor_init_vulkan(struct comp_compositor *c)
 
 	struct comp_vulkan_arguments vk_args = {
 	    .get_instance_proc_address = vkGetInstanceProcAddr,
-	    .required_instance_version = VK_MAKE_VERSION(1, 0, 0),
+	    .required_instance_version = VK_MAKE_VERSION(1, 2, 0),
 	    .required_instance_extensions = required_instance_ext_list,
 	    .optional_instance_extensions = optional_instance_ext_list,
 	    .required_device_extensions = required_device_extension_list,
@@ -744,11 +744,6 @@ compositor_init_vulkan(struct comp_compositor *c)
 
 	struct comp_vulkan_results vk_res = {0};
 	bool bundle_ret = comp_vulkan_init_bundle(vk, &vk_args, &vk_res);
-
-	u_string_list_destroy(&required_instance_ext_list);
-	u_string_list_destroy(&optional_instance_ext_list);
-	u_string_list_destroy(&required_device_extension_list);
-	u_string_list_destroy(&optional_device_extension_list);
 
 	if (!bundle_ret) {
 		return false;
@@ -775,6 +770,14 @@ compositor_init_vulkan(struct comp_compositor *c)
 	if (xret != XRT_SUCCESS) {
 		return false;
 	}
+
+	// illixr_destroy_timewarp();
+	illixr_initialize_vulkan_display_service(vk->instance, vk->physical_device, vk->device, vk->queue, vk->queue_family_index, vk_args.enabled_instance_extensions, vk_args.enabled_device_extensions);
+
+	u_string_list_destroy(&required_instance_ext_list);
+	u_string_list_destroy(&optional_instance_ext_list);
+	u_string_list_destroy(&required_device_extension_list);
+	u_string_list_destroy(&optional_device_extension_list);
 
 	return true;
 }
@@ -991,15 +994,6 @@ compositor_init_swapchain(struct comp_compositor *c)
 	if (comp_target_init_post_vulkan(c->target,                   //
 	                                 c->settings.preferred.width, //
 	                                 c->settings.preferred.height)) {
-										// check whether ILLIXR is present
-		if (strcmp(c->xdev->str, "ILLIXR") != 0) {
-			return true;
-		}
-
-		// // populate ILLIXR display service
-		// struct vk_bundle* bundle = c->nr.vk;
-		// illixr_initialize_vulkan_display_service(bundle->instance, bundle->physical_device, bundle->device, bundle->queue, bundle->queue_family_index);
-
 		return true;
 	}
 

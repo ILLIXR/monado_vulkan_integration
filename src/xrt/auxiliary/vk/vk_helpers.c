@@ -694,6 +694,112 @@ vk_create_image_simple(struct vk_bundle *vk,
 }
 
 VkResult
+vk_create_image_exported(struct vk_bundle *vk,
+					   VkExtent2D extent,
+					   VkFormat format,
+					   VkImageUsageFlags usage,
+					   VkDeviceMemory *out_mem,
+					   VkDeviceSize *out_size,
+					   VkDeviceSize *out_offset,
+					   VkImage *out_image) {
+	VkImageCreateInfo image_info = {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		.pNext = NULL,
+		.imageType = VK_IMAGE_TYPE_2D,
+		.format = format,
+		.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
+		.extent =
+		{
+			.width = extent.width,
+			.height = extent.height,
+			.depth = 1,
+		},
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.tiling = VK_IMAGE_TILING_OPTIMAL,
+		.usage = usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.queueFamilyIndexCount = 0,
+		.pQueueFamilyIndices = NULL,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+	};
+
+	VkExportMemoryAllocateInfo export_info = {
+		.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO,
+		.pNext = NULL,
+		.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+	};
+
+	VkExternalMemoryImageCreateInfo external_info = {
+		.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+		.pNext = NULL,
+		.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+	};
+
+	image_info.pNext = &external_info;
+
+	VkImage image;
+	VkResult ret = vk->vkCreateImage(vk->device, &image_info, NULL, &image);
+	if (ret != VK_SUCCESS) {
+		VK_ERROR(vk, "vkCreateImage: %s", vk_result_string(ret));
+		// Nothing to cleanup
+		return ret;
+	}
+
+	// Allocate memory
+	VkMemoryRequirements memory_requirements;
+	vk->vkGetImageMemoryRequirements(vk->device, image, &memory_requirements);
+
+	uint32_t memory_type_index = UINT32_MAX;
+	bool bret = vk_get_memory_type(          //
+		vk,                                  // vk_bundle
+		memory_requirements.memoryTypeBits,  // type_bits
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, // memory_props
+		&memory_type_index);                 // out_type_id
+	if (!bret) {
+		VK_ERROR(vk, "vk_get_memory_type: false\n\tFailed to find a matching memory type.");
+		assert(false);
+	}
+
+	VkMemoryDedicatedAllocateInfo dedicated_info = {
+		.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+		.pNext = &export_info,
+		.image = image,
+		.buffer = VK_NULL_HANDLE,
+	};
+
+	VkMemoryAllocateInfo alloc_info = {
+		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		.pNext = &dedicated_info,
+		.allocationSize = memory_requirements.size,
+		.memoryTypeIndex = memory_type_index,
+	};
+
+	VkDeviceMemory device_memory = VK_NULL_HANDLE;
+	ret = vk->vkAllocateMemory(vk->device, &alloc_info, NULL, &device_memory);
+	if (ret != VK_SUCCESS) {
+		VK_ERROR(vk, "vkAllocateMemory: %s", vk_result_string(ret));
+		assert(false);
+	}
+
+	ret = vk->vkBindImageMemory(vk->device, image, device_memory, 0);
+	if (ret != VK_SUCCESS) {
+		// Clean up memory
+		vk->vkFreeMemory(vk->device, device_memory, NULL);
+		VK_ERROR(vk, "vkBindImageMemory: %s", vk_result_string(ret));
+		assert(false);
+	}
+
+	*out_mem = device_memory;
+	*out_size = memory_requirements.size;
+	*out_offset = 0;
+	*out_image = image;
+
+	return ret;
+}
+
+VkResult
 vk_create_image_mutable_rgba(
     struct vk_bundle *vk, VkExtent2D extent, VkImageUsageFlags usage, VkDeviceMemory *out_mem, VkImage *out_image)
 {

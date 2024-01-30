@@ -57,6 +57,9 @@ struct comp_vulkan_arguments
 
 	//! Vulkan physical device index for clients to use, -1 for auto.
 	int client_gpu_index;
+
+	struct u_string_list *enabled_instance_extensions;
+	struct u_string_list *enabled_device_extensions;
 };
 
 /*!
@@ -90,7 +93,7 @@ struct comp_vulkan_results
  */
 bool
 comp_vulkan_init_bundle(struct vk_bundle *vk,
-                        const struct comp_vulkan_arguments *vk_args,
+                        struct comp_vulkan_arguments *vk_args,
                         struct comp_vulkan_results *vk_res);
 
 

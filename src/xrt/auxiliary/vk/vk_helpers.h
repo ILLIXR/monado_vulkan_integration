@@ -659,7 +659,8 @@ vk_create_device(struct vk_bundle *vk,
                  VkQueueGlobalPriorityEXT global_priority,
                  struct u_string_list *required_device_ext_list,
                  struct u_string_list *optional_device_ext_list,
-                 const struct vk_device_features *optional_device_features);
+                 const struct vk_device_features *optional_device_features,
+                 struct u_string_list **out_list);
 
 /*!
  * @brief Initialize mutexes in the @ref vk_bundle.
@@ -813,6 +814,16 @@ vk_create_image_simple(struct vk_bundle *vk,
                        VkImageUsageFlags usage,
                        VkDeviceMemory *out_mem,
                        VkImage *out_image);
+
+VkResult
+vk_create_image_exported(struct vk_bundle *vk,
+					   VkExtent2D extent,
+					   VkFormat format,
+					   VkImageUsageFlags usage,
+					   VkDeviceMemory *out_mem,
+					   VkDeviceSize *out_size,
+					   VkDeviceSize *out_offset,
+					   VkImage *out_image);
 
 /*!
  * Helper to create a mutable RG88B8A8 VkImage that specializes in the two

@@ -325,7 +325,7 @@ run_func(void *ptr)
 			wait_semaphore(&xcsem, value);
 		}
 		if (xcf != NULL) {
-			wait_fence(&xcf);
+			// wait_fence(&xcf);
 		}
 
 		// Sample time outside of lock.

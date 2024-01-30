@@ -158,8 +158,7 @@ fill_in_results(struct vk_bundle *vk, const struct comp_vulkan_arguments *vk_arg
  */
 
 static VkResult
-create_instance(struct vk_bundle *vk, const struct comp_vulkan_arguments *vk_args)
-{
+create_instance(struct vk_bundle *vk, struct comp_vulkan_arguments *vk_args) {
 	VkResult ret;
 
 	assert(vk_args->required_instance_version != 0);
@@ -196,7 +195,7 @@ create_instance(struct vk_bundle *vk, const struct comp_vulkan_arguments *vk_arg
 
 	vk->version = vk_args->required_instance_version;
 
-	u_string_list_destroy(&instance_ext_list);
+	vk_args->enabled_instance_extensions = instance_ext_list;
 
 	ret = vk_get_instance_functions(vk);
 	if (ret != VK_SUCCESS) {
@@ -208,7 +207,7 @@ create_instance(struct vk_bundle *vk, const struct comp_vulkan_arguments *vk_arg
 }
 
 static VkResult
-create_device(struct vk_bundle *vk, const struct comp_vulkan_arguments *vk_args)
+create_device(struct vk_bundle *vk, struct comp_vulkan_arguments *vk_args)
 {
 	VkResult ret;
 
@@ -241,7 +240,8 @@ create_device(struct vk_bundle *vk, const struct comp_vulkan_arguments *vk_args)
 		    prios[i],                            // global_priority
 		    vk_args->required_device_extensions, //
 		    vk_args->optional_device_extensions, //
-		    &device_features);                   // optional_device_features
+		    &device_features,
+		    &vk_args->enabled_device_extensions);                   // optional_device_features
 
 		// All ok!
 		if (ret == VK_SUCCESS) {
@@ -454,7 +454,7 @@ is_format_supported(struct vk_bundle *vk, VkFormat format, enum xrt_swapchain_us
 
 bool
 comp_vulkan_init_bundle(struct vk_bundle *vk,
-                        const struct comp_vulkan_arguments *vk_args,
+                        struct comp_vulkan_arguments *vk_args,
                         struct comp_vulkan_results *vk_res)
 {
 	VkResult ret;

@@ -26,13 +26,21 @@ struct comp_layer_renderer
 		VkDeviceMemory memory;
 		VkImageView view;
 
+		VkDeviceSize image_size;
+		VkDeviceSize image_offset;
+		VkExtent2D image_extent;
+
 		// Need depth for OpenWarp
 		VkImage depth_image;
 		VkDeviceMemory depth_memory;
 		VkImageView depth_view;
 
+		VkDeviceSize depth_size;
+		VkDeviceSize depth_offset;
+		VkExtent2D depth_extent;
+
 		VkFramebuffer handle;
-	} framebuffers[2];
+	} framebuffers[2 * OFFLOAD_BUFFER_POOL_SIZE];
 
 	struct vk_cmd_pool pool;
 
@@ -97,7 +105,7 @@ comp_layer_renderer_destroy(struct comp_layer_renderer **ptr_clr);
  * @public @memberof comp_layer_renderer
  */
 void
-comp_layer_renderer_draw(struct comp_layer_renderer *self);
+comp_layer_renderer_draw(struct comp_layer_renderer *self, int8_t ind);
 
 /*!
  * Update the internal members derived from the field of view.
