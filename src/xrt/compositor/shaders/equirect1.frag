@@ -24,6 +24,7 @@ layout (set = 1, binding = 0, std140) uniform Equirect
 
 layout (location = 0)  in vec2 uv;
 layout (location = 0) out vec4 out_color;
+layout (location = 1) out vec4 out_depth;
 
 const float PI = 3.1416;
 
@@ -47,5 +48,6 @@ void main ()
 	lon += equirect.bias.y;
 
 	out_color = texture(image, vec2(lat, lon));
+	out_depth = vec4(0);
 }
 

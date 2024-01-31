@@ -30,7 +30,9 @@ struct comp_layer_renderer
 		VkDeviceSize image_offset;
 		VkExtent2D image_extent;
 
-		// Need depth for OpenWarp
+		// Need depth for OpenWarp - 
+		// one is written to for encoding,
+		// the other is used for actual depth testing.
 		VkImage depth_image;
 		VkDeviceMemory depth_memory;
 		VkImageView depth_view;
@@ -38,6 +40,10 @@ struct comp_layer_renderer
 		VkDeviceSize depth_size;
 		VkDeviceSize depth_offset;
 		VkExtent2D depth_extent;
+		
+		VkImage depth_attachment_image;
+		VkDeviceMemory depth_attachment_memory;
+		VkImageView depth_attachment_view;
 
 		VkFramebuffer handle;
 	} framebuffers[2 * OFFLOAD_BUFFER_POOL_SIZE];

@@ -17,6 +17,7 @@ layout (binding = 1) uniform samplerCube cube;
 
 layout (location = 0)  in vec2 uv;
 layout (location = 0) out vec4 out_color;
+layout (location = 1) out vec4 out_depth;
 
 void main ()
 {
@@ -24,4 +25,5 @@ void main ()
 	vec4 view_dir = normalize(ubo.mvp * vec4(frag_coord.x, frag_coord.y, 1, 1));
 
 	out_color = texture(cube, view_dir.xyz);
+	out_depth = vec4(0);
 }

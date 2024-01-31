@@ -50,6 +50,18 @@ _init_render_pass(struct vk_bundle *vk,
 		.flags = 0,
 	};
 
+	VkAttachmentDescription depth_image_attachment = {
+		.format = format,
+		.samples = sample_count,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.finalLayout = final_layout,
+		.flags = 0,
+	};
+
 	VkAttachmentDescription depth_attachment = {
 		.format = VK_FORMAT_D16_UNORM,
 		.samples = VK_SAMPLE_COUNT_1_BIT,
@@ -62,7 +74,7 @@ _init_render_pass(struct vk_bundle *vk,
 		.flags = 0,
 	};
 
-	VkAttachmentDescription attachments[2] = {image_attachment, depth_attachment};
+	VkAttachmentDescription attachments[3] = {image_attachment, depth_image_attachment, depth_attachment};
 
 	VkSubpassDependency dependencies[2];
 
@@ -82,6 +94,18 @@ _init_render_pass(struct vk_bundle *vk,
 	dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
+	VkAttachmentReference image_reference = {
+		.attachment = 0,
+		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	};
+
+	VkAttachmentReference depth_image_reference = {
+		.attachment = 1,
+		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	};
+
+	VkAttachmentReference color_references[2] = {image_reference, depth_image_reference};
+
 	VkRenderPassCreateInfo renderpass_info = {
 	    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
 	    .flags = 0,
@@ -91,15 +115,11 @@ _init_render_pass(struct vk_bundle *vk,
 	    .pSubpasses =
 	        &(VkSubpassDescription){
 	            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-	            .colorAttachmentCount = 1,
-	            .pColorAttachments =
-	                &(VkAttachmentReference){
-	                    .attachment = 0,
-	                    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-	                },
+	            .colorAttachmentCount = 2,
+	            .pColorAttachments =  color_references,
 	            .pDepthStencilAttachment = 
 					&(VkAttachmentReference){
-						.attachment = 1,
+						.attachment = 2,
 						.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
 					},
 	            .pResolveAttachments = NULL,
@@ -614,6 +634,7 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 	    VK_IMAGE_USAGE_SAMPLED_BIT |          //
 	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT;      //
 
+	// Color image for encoding
 	VkResult res = vk_create_image_exported(vk, self->extent, format, usage,
 		&self->framebuffers[eye].memory,
 		&self->framebuffers[eye].size,
@@ -635,14 +656,8 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 
 	vk_check_error("vk_create_view", res, false);
 
-	VkFormat depth_format = VK_FORMAT_D16_UNORM;
-
-	VkImageUsageFlags depth_usage =                   //
-	    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | //
-	    VK_IMAGE_USAGE_SAMPLED_BIT |
-		VK_IMAGE_USAGE_TRANSFER_SRC_BIT; 
-
-	VkResult res = vk_create_image_exported(vk, self->extent, format, usage,
+	// Depth image for encoding
+	res = vk_create_image_exported(vk, self->extent, format, usage,
 		&self->framebuffers[eye].depth_memory,
 		&self->framebuffers[eye].depth_size,
 		&self->framebuffers[eye].depth_offset,
@@ -650,6 +665,22 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 	self->framebuffers[eye].depth_extent = self->extent;
 	vk_check_error("vk_create_image_exported", res, false);
 
+
+	res = vk_create_view(vk, self->framebuffers[eye].depth_image, VK_IMAGE_VIEW_TYPE_2D, format, subresource_range,
+	                     &self->framebuffers[eye].depth_view);
+
+	vk_check_error("vk_create_view", res, false);
+
+	// Actual depth image for the depth attachment
+	VkFormat depth_format = VK_FORMAT_D16_UNORM;
+
+	VkImageUsageFlags depth_usage =                   //
+	    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | //
+	    VK_IMAGE_USAGE_SAMPLED_BIT;
+
+	res = vk_create_image_simple(vk, self->extent, depth_format, depth_usage, &self->framebuffers[eye].depth_attachment_memory,
+	                             &self->framebuffers[eye].depth_attachment_image);
+	vk_check_error("vk_create_image_simple", res, false);
 
 	VkImageSubresourceRange depth_range = {
 	    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -659,15 +690,18 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 	    .layerCount = 1,
 	};
 
-	res = vk_create_view(vk, self->framebuffers[eye].depth_image, VK_IMAGE_VIEW_TYPE_2D, depth_format, depth_range,
-	                     &self->framebuffers[eye].depth_view);
+	res = vk_create_view(vk, self->framebuffers[eye].depth_attachment_image, VK_IMAGE_VIEW_TYPE_2D, depth_format, depth_range,
+	                     &self->framebuffers[eye].depth_attachment_view);
 
-	VkImageView views[2] = {self->framebuffers[eye].view, self->framebuffers[eye].depth_view};
+	vk_check_error("vk_create_view", res, false);
+
+
+	VkImageView views[2] = {self->framebuffers[eye].view, self->framebuffers[eye].depth_view, self->framebuffers[eye].depth_attachment_view};
 
 	VkFramebufferCreateInfo framebuffer_info = {
 	    .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
 	    .renderPass = rp,
-	    .attachmentCount = 2,
+	    .attachmentCount = 3,
 	    .pAttachments = views,
 	    .width = self->extent.width,
 	    .height = self->extent.height,

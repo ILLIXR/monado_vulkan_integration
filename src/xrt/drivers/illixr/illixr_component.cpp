@@ -192,7 +192,7 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 			image_arr[eye].allocation_info.offset = offset[i * 4 + eye * 2 + 1];
 			image_arr[eye].allocation_info.deviceMemory = device_memory[i * 4 + eye * 2 + 1];
 			image_arr[eye].image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-			image_arr[eye].image_info.format = VK_FORMAT_D16_UNORM;
+			image_arr[eye].image_info.format = VK_FORMAT_B8G8R8A8_UNORM;
 			image_arr[eye].image_info.extent = {extent.width, extent.height, 1};
 		}
 		depth_image_pool.push_back(image_arr);
