@@ -346,18 +346,18 @@ _init_graphics_pipeline(struct comp_layer_renderer *self,
 			.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
 			.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
 			.alphaBlendOp = VK_BLEND_OP_ADD,
-		    },
-{
-	.blendEnable = VK_TRUE,
-	.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
-			  VK_COLOR_COMPONENT_A_BIT,
-	.srcColorBlendFactor = blend_factor,
-	.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-	.colorBlendOp = VK_BLEND_OP_ADD,
-	.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-	.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-	.alphaBlendOp = VK_BLEND_OP_ADD,
-    }
+		},
+		{
+			.blendEnable = VK_TRUE,
+			.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+					VK_COLOR_COMPONENT_A_BIT,
+			.srcColorBlendFactor = blend_factor,
+			.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.colorBlendOp = VK_BLEND_OP_ADD,
+			.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+			.alphaBlendOp = VK_BLEND_OP_ADD,
+		}
     };
 
 
@@ -480,6 +480,31 @@ _init_graphics_pipeline_depth(struct comp_layer_renderer *self,
 	        },
 	};
 
+	VkPipelineColorBlendAttachmentState blend_attachments[2] = {
+		{
+			.blendEnable = VK_TRUE,
+			.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+					  VK_COLOR_COMPONENT_A_BIT,
+			.srcColorBlendFactor = blend_factor,
+			.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.colorBlendOp = VK_BLEND_OP_ADD,
+			.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+			.alphaBlendOp = VK_BLEND_OP_ADD,
+		},
+		{
+			.blendEnable = VK_TRUE,
+			.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+					VK_COLOR_COMPONENT_A_BIT,
+			.srcColorBlendFactor = blend_factor,
+			.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.colorBlendOp = VK_BLEND_OP_ADD,
+			.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+			.alphaBlendOp = VK_BLEND_OP_ADD,
+		}
+    };
+
 	VkPipelineShaderStageCreateInfo shader_stages[2] = {
 	    {
 	        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -537,9 +562,9 @@ _init_graphics_pipeline_depth(struct comp_layer_renderer *self,
 	        &(VkPipelineColorBlendStateCreateInfo){
 	            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
 	            .logicOpEnable = VK_FALSE,
-	            .attachmentCount = 1,
+	            .attachmentCount = 2,
 	            .blendConstants = {0, 0, 0, 0},
-	            .pAttachments = config.blend_attachments,
+	            .pAttachments = blend_attachments,
 	        },
 	    .stageCount = 2,
 	    .pStages = shader_stages,
@@ -882,10 +907,13 @@ _render_pass_begin(struct vk_bundle *vk,
 	                },
 	            .extent = extent,
 	        },
-	    .clearValueCount = 2,
+	    .clearValueCount = 3,
 	    .pClearValues =
 	        (VkClearValue[]){
 	            {
+	                .color = clear_color,
+	            },
+				{
 	                .color = clear_color,
 	            },
 	            {
