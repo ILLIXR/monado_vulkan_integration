@@ -25,5 +25,5 @@ void main ()
 	vec2 uv_sub = vec2(ubo.offset) + uv * vec2(ubo.extent);
 	uv_sub /= textureSize(image, 0);
 	out_color = texture(image, uv_sub);
-	out_deptht = vec4(0);
+	out_depth = vec4(0);
 }

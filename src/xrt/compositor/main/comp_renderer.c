@@ -560,7 +560,7 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 		.width = r->c->target->width,
 		.height = r->c->target->height,
 	};
-	illixr_initialize_vulkan_display_service(vk->instance, vk->physical_device, vk->device, vk->queue, vk->queue_family_index, extent);
+	// illixr_initialize_vulkan_display_service(vk->instance, vk->physical_device, vk->device, vk->queue, vk->queue_family_index, extent);
 
 	// Initialize ILLIXR timewarp
 	if (strcmp(r->c->xdev->str, "ILLIXR") == 0) {
@@ -597,15 +597,15 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 			device_memory[i] = r->lr->framebuffers[i].memory;
 			device_memory[i + 1] = r->lr->framebuffers[i].depth_memory;
 
-			size[i] = r->lr->framebuffers[i].size;
+			size[i] = r->lr->framebuffers[i].image_size;
 			size[i + 1] = r->lr->framebuffers[i].depth_size;
 
-			offset[i] = r->lr->framebuffers[i].offset;
+			offset[i] = r->lr->framebuffers[i].image_offset;
 			offset[i + 1] = r->lr->framebuffers[i].depth_offset;
 		}
 
 
-		illixr_initialize_timewarp(r->lr->render_pass, 0, r->lr->framebuffers[0].extent, images, image_view, device_memory, size, offset, OFFLOAD_BUFFER_POOL_SIZE);
+		illixr_initialize_timewarp(r->lr->render_pass, 0, r->lr->framebuffers[0].image_extent, images, image_view, device_memory, size, offset, OFFLOAD_BUFFER_POOL_SIZE);
 	}
 
 	return true;

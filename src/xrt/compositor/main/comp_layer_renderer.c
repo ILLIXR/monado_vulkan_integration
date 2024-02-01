@@ -109,7 +109,7 @@ _init_render_pass(struct vk_bundle *vk,
 	VkRenderPassCreateInfo renderpass_info = {
 	    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
 	    .flags = 0,
-	    .attachmentCount = 2,
+	    .attachmentCount = 3,
 	    .pAttachments = attachments,
 	    .subpassCount = 1,
 	    .pSubpasses =
@@ -335,6 +335,32 @@ _init_graphics_pipeline(struct comp_layer_renderer *self,
 	    },
 	};
 
+	VkPipelineColorBlendAttachmentState blend_attachments[2] = {
+		{
+			.blendEnable = VK_TRUE,
+			.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+					  VK_COLOR_COMPONENT_A_BIT,
+			.srcColorBlendFactor = blend_factor,
+			.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.colorBlendOp = VK_BLEND_OP_ADD,
+			.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+			.alphaBlendOp = VK_BLEND_OP_ADD,
+		    },
+{
+	.blendEnable = VK_TRUE,
+	.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+			  VK_COLOR_COMPONENT_A_BIT,
+	.srcColorBlendFactor = blend_factor,
+	.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+	.colorBlendOp = VK_BLEND_OP_ADD,
+	.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+	.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+	.alphaBlendOp = VK_BLEND_OP_ADD,
+    }
+    };
+
+
 	VkGraphicsPipelineCreateInfo pipeline_info = {
 	    .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 	    .layout = self->pipeline_layout,
@@ -377,9 +403,9 @@ _init_graphics_pipeline(struct comp_layer_renderer *self,
 	        &(VkPipelineColorBlendStateCreateInfo){
 	            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
 	            .logicOpEnable = VK_FALSE,
-	            .attachmentCount = 1,
+	            .attachmentCount = 2,
 	            .blendConstants = {0, 0, 0, 0},
-	            .pAttachments = config.blend_attachments,
+	            .pAttachments = blend_attachments,
 	        },
 	    .stageCount = 2,
 	    .pStages = shader_stages,
@@ -637,10 +663,10 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 	// Color image for encoding
 	VkResult res = vk_create_image_exported(vk, self->extent, format, usage,
 		&self->framebuffers[eye].memory,
-		&self->framebuffers[eye].size,
-		&self->framebuffers[eye].offset,
+		&self->framebuffers[eye].image_size,
+		&self->framebuffers[eye].image_offset,
 	    &self->framebuffers[eye].image);
-	self->framebuffers[eye].extent = self->extent;
+	self->framebuffers[eye].image_extent = self->extent;
 	vk_check_error("vk_create_image_exported", res, false);
 
 	VkImageSubresourceRange subresource_range = {
@@ -696,7 +722,7 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 	vk_check_error("vk_create_view", res, false);
 
 
-	VkImageView views[2] = {self->framebuffers[eye].view, self->framebuffers[eye].depth_view, self->framebuffers[eye].depth_attachment_view};
+	VkImageView views[3] = {self->framebuffers[eye].view, self->framebuffers[eye].depth_view, self->framebuffers[eye].depth_attachment_view};
 
 	VkFramebufferCreateInfo framebuffer_info = {
 	    .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
