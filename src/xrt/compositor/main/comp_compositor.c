@@ -648,15 +648,15 @@ static const char *optional_device_extensions[] = {
 #ifdef VK_KHR_timeline_semaphore
     VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
 #endif
-#ifdef VK_KHR_video_queue
-	VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
-#endif
-#ifdef VK_KHR_video_encode_queue
-	VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME,
-#endif
-#ifdef VK_EXT_video_encode_h264
-	VK_EXT_VIDEO_ENCODE_H264_EXTENSION_NAME,
-#endif
+// #ifdef VK_KHR_video_queue
+// 	VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
+// #endif
+// #ifdef VK_KHR_video_encode_queue
+// 	VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME,
+// #endif
+// #ifdef VK_EXT_video_encode_h264
+// 	VK_EXT_VIDEO_ENCODE_H264_EXTENSION_NAME,
+// #endif
 #ifdef VK_EXT_calibrated_timestamps
     VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
 #endif
