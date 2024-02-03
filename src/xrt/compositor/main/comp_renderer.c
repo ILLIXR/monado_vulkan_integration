@@ -327,11 +327,11 @@ renderer_build_rendering(struct comp_renderer *r,
 
 	// OpenWarp is responsible for beginning the render pass and setting the viewport
 
-	// render_gfx_begin_target( //
-	//     rr,                  //
-	//     rtr);                //
+	render_gfx_begin_target( //
+	    rr,                  //
+	    rtr);                //
 
-	rr->rtr = rtr;
+	// rr->rtr = rtr;
 
 	/*
 	 * Viewport one
@@ -346,30 +346,30 @@ renderer_build_rendering(struct comp_renderer *r,
 
 	// illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 1);
 
-	// render_gfx_end_view(rr);
+	render_gfx_end_view(rr);
 
 
 	/*
 	 * Viewport two
 	 */
 
-	// r_viewport_data.w *= 2;
-	// render_gfx_begin_view(rr,                //
-	//                       1,                 // view_index
-	//                       &r_viewport_data); // viewport_data
+	r_viewport_data.w *= 2;
+	render_gfx_begin_view(rr,                //
+	                      1,                 // view_index
+	                      &r_viewport_data); // viewport_data
 
 	render_gfx_distortion(rr);
 
 	// illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 0);
 
-	// render_gfx_end_view(rr);
+	render_gfx_end_view(rr);
 
 
 	/*
 	 * End
 	 */
 
-	// render_gfx_end_target(rr);
+	render_gfx_end_target(rr);
 
 	// Make the command buffer usable.
 	render_gfx_end(rr);

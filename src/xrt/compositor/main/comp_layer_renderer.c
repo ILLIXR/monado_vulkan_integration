@@ -894,6 +894,7 @@ _render_pass_begin(struct vk_bundle *vk,
                    VkFramebuffer frame_buffer,
                    VkCommandBuffer cmd_buffer)
 {
+	printf("Render pass beginning\n");
 	VkRenderPassBeginInfo render_pass_info = {
 	    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 	    .renderPass = render_pass,
@@ -961,6 +962,7 @@ comp_layer_renderer_draw(struct comp_layer_renderer *self, int8_t ind)
 {
 	COMP_TRACE_MARKER();
 	VkResult ret;
+	printf("Comp layer renderer draw beginning\n");
 
 	struct vk_bundle *vk = self->vk;
 	struct vk_cmd_pool *pool = &self->pool;
