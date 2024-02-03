@@ -587,21 +587,21 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 		VkDeviceSize offset[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
 
 		
-		for (int i = 0; i < 2 * OFFLOAD_BUFFER_POOL_SIZE * 2; i += 2) {
-			images[i] = r->lr->framebuffers[i].image;
-			images[i + 1] = r->lr->framebuffers[i].depth_image;
+		for (int i = 0; i < 2 * OFFLOAD_BUFFER_POOL_SIZE; i++) {
+			images[2 * i] = r->lr->framebuffers[i].image;
+			images[2 * i + 1] = r->lr->framebuffers[i].depth_image;
 
-			image_view[i] = r->lr->framebuffers[i].view;
-			image_view[i + 1] = r->lr->framebuffers[i].depth_view;
+			image_view[2 * i] = r->lr->framebuffers[i].view;
+			image_view[2 * i + 1] = r->lr->framebuffers[i].depth_view;
 			
-			device_memory[i] = r->lr->framebuffers[i].memory;
-			device_memory[i + 1] = r->lr->framebuffers[i].depth_memory;
+			device_memory[2 * i] = r->lr->framebuffers[i].memory;
+			device_memory[2 * i + 1] = r->lr->framebuffers[i].depth_memory;
 
-			size[i] = r->lr->framebuffers[i].image_size;
-			size[i + 1] = r->lr->framebuffers[i].depth_size;
+			size[2 * i] = r->lr->framebuffers[i].image_size;
+			size[2 * i + 1] = r->lr->framebuffers[i].depth_size;
 
-			offset[i] = r->lr->framebuffers[i].image_offset;
-			offset[i + 1] = r->lr->framebuffers[i].depth_offset;
+			offset[2 * i] = r->lr->framebuffers[i].image_offset;
+			offset[2 * i + 1] = r->lr->framebuffers[i].depth_offset;
 		}
 
 
