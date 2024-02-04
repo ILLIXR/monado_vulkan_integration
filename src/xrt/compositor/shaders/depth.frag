@@ -30,6 +30,6 @@ void main ()
 	out_color = texture(image, uv_sub);
 	
 	float depth_value = texture(depth, uv_sub).r;
-	out_depth = vec4(depth_value);
+	out_depth = vec4(vec3(depth_value), 1.0f);
 	gl_FragDepth = depth_value;
 }
