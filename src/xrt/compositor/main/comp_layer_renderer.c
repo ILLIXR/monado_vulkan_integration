@@ -989,7 +989,7 @@ comp_layer_renderer_draw(struct comp_layer_renderer *self, int8_t ind)
 	struct comp_render_layer *layer;
 	for (int i = 0; i < self->layer_count; i++) {
 		layer = self->layers[i];
-		if (layer->type == XRT_LAYER_STEREO_PROJECTION) {
+		if (layer->type == XRT_LAYER_STEREO_PROJECTION || layer->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
 			break;
 		}
 	}
