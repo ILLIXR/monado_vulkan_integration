@@ -203,7 +203,7 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 	struct u_device_simple_info info;
 	info.display.w_pixels = 2048;
 	info.display.h_pixels = 1024;
-	info.display.w_meters = 0.14f;
+	info.display.w_meters = 0.122f;
 	info.display.h_meters = 0.07f;
 	info.lens_horizontal_separation_meters = 0.13f / 2.0f;
 	info.lens_vertical_position_meters = 0.07f / 2.0f;
@@ -215,6 +215,18 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 		illixr_hmd_destroy(&dh->base);
 		return NULL;
 	}
+
+	// Overwritten hardcoded values from the following thread:
+	// https://community.khronos.org/t/do-these-xrfovf-values-look-suspicious-defective-to-you-0-785-0-707-0-785-0-782-0-785-0-866-0-785-0-781/108975/1
+	dh->base.hmd->distortion.fov[0].angle_left = -0.907341;
+	dh->base.hmd->distortion.fov[0].angle_right = 0.897500;
+	dh->base.hmd->distortion.fov[0].angle_up = 0.953644;
+	dh->base.hmd->distortion.fov[0].angle_down = -0.953628;
+
+	dh->base.hmd->distortion.fov[1].angle_left = -0.897566;
+	dh->base.hmd->distortion.fov[1].angle_right = 0.907700;
+	dh->base.hmd->distortion.fov[1].angle_up = 0.954293;
+	dh->base.hmd->distortion.fov[1].angle_down = -0.952802;
 
 	// Setup variable tracker.
 	u_var_add_root(dh, "ILLIXR", true);
