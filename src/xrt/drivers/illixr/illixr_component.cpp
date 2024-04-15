@@ -13,7 +13,9 @@
 #include <memory>
 #include <vulkan/vulkan.h>
 
+#include <chrono>
 #include <iostream>
+#include <queue>
 #include "illixr/plugin.hpp"
 #include "illixr/phonebook.hpp"
 #include "illixr/switchboard.hpp"
@@ -55,6 +57,11 @@ public:
 	std::shared_ptr<display_provider> ds;
 	switchboard::writer<switchboard::event_wrapper<time_point>> _m_vsync;
 
+	// Insert artificial latency to the pose that's provided to the renderer
+	bool start_providing_pose = false;
+	std::queue<fast_pose_type> previous_poses;
+	std::chrono::time_point<std::chrono::system_clock> start_pose_timepoint;
+
 	pose_type last_pose;
 };
 
@@ -76,9 +83,32 @@ illixr_read_pose()
 	if (!illixr_plugin_obj->sb_pose->fast_pose_reliable()) {
 		std::cerr << "Pose not reliable yet; returning best guess" << std::endl;
 	}
+
+	if (previous_poses.empty()) {
+		start_pose_timepoint = std::chrono::system_clock::now();
+	}
+
 	struct xrt_pose ret;
 	const fast_pose_type fast_pose = illixr_plugin_obj->sb_pose->get_fast_pose();
-	const pose_type pose = fast_pose.pose;
+	previous_poses.push(fast_pose);
+
+	// We accumulate the queue by first waiting for n milliseconds and only providing the default pose.
+	// Then the poses go in FIFO order such that the rendered pose is always n milliseconds behind the "ground truth" pose.
+	static const float n = 500;
+	if (!start_providing_pose) {
+		auto current_pose_timepoint = std::chrono::system_clock::now();
+
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(current_pose_timepoint - start_pose_timepoint) >= n) {
+			start_providing_pose = true;
+		}
+
+		ret.orientation = XRT_QUAT_IDENTITY;
+		ret.position = XRT_POSE_IDENTITY;
+		return ret;
+	}
+
+	const pose_type pose = previous_poses.front().pose;
+	previous_poses.pop();
 
 	ret.orientation.x = pose.orientation.x();
 	ret.orientation.y = pose.orientation.y();
