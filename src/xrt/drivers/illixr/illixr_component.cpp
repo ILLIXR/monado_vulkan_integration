@@ -115,7 +115,7 @@ illixr_read_pose()
 }
 
 extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, VkPhysicalDevice physical_device,
-                                                         VkDevice device, VkQueue queue, uint32_t queue_family_index,
+                                                         VkDevice device, VkQueue queue, pthread_mutex_t queue_mutex, uint32_t queue_family_index,
                                                          struct u_string_list* enabled_instance_extensions,
                                                          struct u_string_list* enabled_device_extensions) {
 	printf("Initializing vulkan display service\n");
@@ -124,6 +124,7 @@ extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, Vk
 	ds->vk_physical_device = physical_device;
 	ds->vk_device = device;
 	ds->queues[queue::GRAPHICS] = {queue, queue_family_index, queue::GRAPHICS, std::make_shared<std::mutex>()};
+	ds->monado_mutex = queue_mutex;
 
 	const char* const * exts = u_string_list_get_data(enabled_instance_extensions);
 	uint32_t ext_count = u_string_list_get_size(enabled_instance_extensions);

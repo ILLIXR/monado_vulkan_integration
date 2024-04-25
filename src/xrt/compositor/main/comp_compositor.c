@@ -772,7 +772,7 @@ compositor_init_vulkan(struct comp_compositor *c)
 	}
 
 	// illixr_destroy_timewarp();
-	illixr_initialize_vulkan_display_service(vk->instance, vk->physical_device, vk->device, vk->queue, vk->queue_family_index, vk_args.enabled_instance_extensions, vk_args.enabled_device_extensions);
+	illixr_initialize_vulkan_display_service(vk->instance, vk->physical_device, vk->device, vk->queue, vk->queue_mutex.mutex, vk->queue_family_index, vk_args.enabled_instance_extensions, vk_args.enabled_device_extensions);
 
 	u_string_list_destroy(&required_instance_ext_list);
 	u_string_list_destroy(&optional_instance_ext_list);
