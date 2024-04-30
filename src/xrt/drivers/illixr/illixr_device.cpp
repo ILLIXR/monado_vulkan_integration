@@ -202,7 +202,7 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 
 	// Setup info.
 	struct u_device_simple_info info;
-	info.display.w_pixels = ILLIXR::server_params::width_pixels;
+	info.display.w_pixels = 2 * ILLIXR::server_params::width_pixels;
 	info.display.h_pixels = ILLIXR::server_params::height_pixels;
 	info.display.w_meters = 0.122f;
 	info.display.h_meters = 0.07f;
