@@ -51,7 +51,7 @@ _init_render_pass(struct vk_bundle *vk,
 	};
 
 	VkAttachmentDescription depth_image_attachment = {
-		.format = VK_FORMAT_B8G8R8A8_UNORM,
+		.format = format,
 		.samples = VK_SAMPLE_COUNT_1_BIT,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -708,7 +708,7 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 	vk_check_error("vk_create_view", res, false);
 
 	// Depth image for encoding
-	res = vk_create_image_exported(vk, self->extent, VK_FORMAT_B8G8R8A8_UNORM, usage,
+	res = vk_create_image_exported(vk, self->extent, format, usage,
 		&self->framebuffers[eye].depth_memory,
 		&self->framebuffers[eye].depth_size,
 		&self->framebuffers[eye].depth_offset,
