@@ -30,6 +30,7 @@
 #include "illixr_component.h"
 #include "illixr/dynamic_lib.hpp"
 #include "illixr/runtime.hpp"
+#include "illixr/global_module_defs.hpp"
 
 /*
  *
@@ -216,17 +217,13 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 		return NULL;
 	}
 
-	// Overwritten hardcoded values from the following thread:
-	// https://community.khronos.org/t/do-these-xrfovf-values-look-suspicious-defective-to-you-0-785-0-707-0-785-0-782-0-785-0-866-0-785-0-781/108975/1
-	dh->base.hmd->distortion.fov[0].angle_left = -0.907341;
-	dh->base.hmd->distortion.fov[0].angle_right = 0.897500;
-	dh->base.hmd->distortion.fov[0].angle_up = 0.953644;
-	dh->base.hmd->distortion.fov[0].angle_down = -0.953628;
-
-	dh->base.hmd->distortion.fov[1].angle_left = -0.897566;
-	dh->base.hmd->distortion.fov[1].angle_right = 0.907700;
-	dh->base.hmd->distortion.fov[1].angle_up = 0.954293;
-	dh->base.hmd->distortion.fov[1].angle_down = -0.952802;
+	// The server may render at a different FOV than the client.
+	for (int eye = 0; eye < 2; eye++) {
+		dh->base.hmd->distortion.fov[eye].angle_left = ILLIXR::server_params::fov_left[eye];
+		dh->base.hmd->distortion.fov[eye].angle_right = ILLIXR::server_params::fov_right[eye];
+		dh->base.hmd->distortion.fov[eye].angle_up = ILLIXR::server_params::fov_up[eye];
+		dh->base.hmd->distortion.fov[eye].angle_down = ILLIXR::server_params::fov_down[eye];
+	}
 
 	// Setup variable tracker.
 	u_var_add_root(dh, "ILLIXR", true);
