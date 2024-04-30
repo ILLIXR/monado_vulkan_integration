@@ -51,7 +51,7 @@ _init_render_pass(struct vk_bundle *vk,
 	};
 
 	VkAttachmentDescription depth_image_attachment = {
-		.format = VK_FORMAT_G8B8R8A8_UNORM,
+		.format = VK_FORMAT_B8G8R8A8_UNORM,
 		.samples = VK_SAMPLE_COUNT_1_BIT,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
