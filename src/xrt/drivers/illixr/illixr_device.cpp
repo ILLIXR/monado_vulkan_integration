@@ -156,6 +156,22 @@ split(const std::string &s, char delimiter)
 	return tokens;
 }
 
+uint32_t get_server_width() {
+	if (std::getenv("ILLIXR_SERVER_WIDTH") == nullptr) {
+		throw std::runtime_error("ILLIXR_SERVER_WIDTH not defined!");
+	}
+	
+	return std::stoi(std::getenv("ILLIXR_SERVER_WIDTH"));
+}
+
+uint32_t get_server_height() {
+	if (std::getenv("ILLIXR_SERVER_HEIGHT") == nullptr) {
+		throw std::runtime_error("ILLIXR_SERVER_HEIGHT not defined!");
+	}
+	
+	return std::stoi(std::getenv("ILLIXR_SERVER_HEIGHT"));
+}
+
 static int
 illixr_rt_launch(struct illixr_hmd *dh, const char *path, const char *comp)
 {
@@ -202,8 +218,8 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 
 	// Setup info.
 	struct u_device_simple_info info;
-	info.display.w_pixels = 2 * ILLIXR::server_params::width_pixels;
-	info.display.h_pixels = ILLIXR::server_params::height_pixels;
+	info.display.w_pixels = 2 * get_server_width();
+	info.display.h_pixels = get_server_height();
 	info.display.w_meters = 0.122f;
 	info.display.h_meters = 0.07f;
 	info.lens_horizontal_separation_meters = 0.13f / 2.0f;
