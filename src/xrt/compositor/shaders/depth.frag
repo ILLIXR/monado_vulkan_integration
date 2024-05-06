@@ -18,7 +18,8 @@ layout (set = 1, binding = 0) uniform sampler2D depth;
 
 layout (location = 0)  in vec2 uv;
 layout (location = 0) out vec4 out_color;
-layout (location = 1) out vec4 out_depth;
+layout (location = 1) out vec4 out_depth; // RGBA8_UNORM
+
 
 // assume it may be modified in any way
 layout(depth_any) out float gl_FragDepth;
@@ -30,6 +31,10 @@ void main ()
 	out_color = texture(image, uv_sub);
 	
 	float depth_value = texture(depth, uv_sub).r;
-	out_depth = vec4(vec3(depth_value), 1.0f);
+	uint depth_uint = floatBitsToUint(depth_value);
+	out_depth = vec4(uintBitsToFloat(depth_uint >> 16),
+	                 uintBitsToFloat(depth_uint >> 8),
+	                 uintBitsToFloat(depth_uint),
+	                 1.0);
 	gl_FragDepth = depth_value;
 }
