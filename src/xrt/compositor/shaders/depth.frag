@@ -32,8 +32,8 @@ void main ()
 	
 	float depth_value = texture(depth, uv_sub).r;
 	uint depth_uint = floatBitsToUint(depth_value);
-	out_depth = vec4(uintBitsToFloat(depth_uint >> 16),
-	                 uintBitsToFloat(depth_uint >> 8),
+	out_depth = vec4(uintBitsToFloat(depth_uint >> 24),
+	                 uintBitsToFloat(depth_uint >> 16),
 	                 uintBitsToFloat(depth_uint),
 	                 1.0);
 	gl_FragDepth = depth_value;
