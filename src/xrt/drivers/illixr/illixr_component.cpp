@@ -103,13 +103,21 @@ illixr_read_pose()
 	const fast_pose_type fast_pose = illixr_plugin_obj->sb_pose->get_fast_pose();
 	const pose_type pose = fast_pose.pose;
 
-	ret.orientation.x = pose.orientation.x();
-	ret.orientation.y = pose.orientation.y();
-	ret.orientation.z = pose.orientation.z();
-	ret.orientation.w = pose.orientation.w();
-	ret.position.x = pose.position.x();
-	ret.position.y = pose.position.y();
-	ret.position.z = pose.position.z();
+	// ret.orientation.x = pose.orientation.x();
+	// ret.orientation.y = pose.orientation.y();
+	// ret.orientation.z = pose.orientation.z();
+	// ret.orientation.w = pose.orientation.w();
+	// ret.position.x = pose.position.x();
+	// ret.position.y = pose.position.y();
+	// ret.position.z = pose.position.z();
+
+	ret.orientation.x = 0;
+	ret.orientation.y = 0;
+	ret.orientation.z = 0;
+	ret.orientation.w = 1;
+	ret.position.x = 0;
+	ret.position.y = 0;
+	ret.position.z = 0;
 
 	return ret;
 }
@@ -172,9 +180,9 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 		for (auto eye = 0; eye < 2; eye++) {
 			image_arr[eye].image = image[i * 4 + eye * 2];
 			image_arr[eye].image_view = image_view[i * 4 + eye  * 2];
-			image_arr[eye].allocation_info.size = size[i * 4 + eye * 2];
-			image_arr[eye].allocation_info.offset = offset[i * 4 + eye * 2];
-			image_arr[eye].allocation_info.deviceMemory = device_memory[i * 4 + eye * 2];
+			image_arr[eye].alloc_info[0].size = size[i * 4 + eye * 2];
+			image_arr[eye].alloc_info[0].offset = offset[i * 4 + eye * 2];
+			image_arr[eye].alloc_info[0].memory = device_memory[i * 4 + eye * 2];
 			image_arr[eye].image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 			image_arr[eye].image_info.format = VK_FORMAT_B8G8R8A8_UNORM;
 			image_arr[eye].image_info.extent = {extent.width, extent.height, 1};
@@ -188,9 +196,9 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 		for (auto eye = 0; eye < 2; eye++) {
 			image_arr[eye].image = image[i * 4 + eye * 2 + 1];
 			image_arr[eye].image_view = image_view[i * 4 + eye  * 2 + 1];
-			image_arr[eye].allocation_info.size = size[i * 4 + eye * 2 + 1];
-			image_arr[eye].allocation_info.offset = offset[i * 4 + eye * 2 + 1];
-			image_arr[eye].allocation_info.deviceMemory = device_memory[i * 4 + eye * 2 + 1];
+			image_arr[eye].alloc_info[0].size = size[i * 4 + eye * 2 + 1];
+			image_arr[eye].alloc_info[0].offset = offset[i * 4 + eye * 2 + 1];
+			image_arr[eye].alloc_info[0].memory = device_memory[i * 4 + eye * 2 + 1];
 			image_arr[eye].image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 			image_arr[eye].image_info.format = VK_FORMAT_B8G8R8A8_UNORM;
 			image_arr[eye].image_info.extent = {extent.width, extent.height, 1};
