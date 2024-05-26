@@ -197,7 +197,12 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 	dh->base.name = XRT_DEVICE_GENERIC_HMD;
 	dh->base.device_type = XRT_DEVICE_TYPE_HMD;
 
-	dh->base.hmd->screens[0].nominal_frame_interval_ns = 1000000000 / 90;
+	// Read framerate from environment variable
+	if (std::getenv("ILLIXR_OFFLOAD_RENDERING_FRAMERATE") != nullptr) {
+		dh->base.hmd->screens[0].nominal_frame_interval_ns = 1000000000 / std::stoi(std::getenv("ILLIXR_OFFLOAD_RENDERING_FRAMERATE"));
+	} else {
+		dh->base.hmd->screens[0].nominal_frame_interval_ns = 1000000000 / 90;
+	}
 
 	size_t idx = 0;
 	dh->base.hmd->blend_modes[idx++] = XRT_BLEND_MODE_OPAQUE;
