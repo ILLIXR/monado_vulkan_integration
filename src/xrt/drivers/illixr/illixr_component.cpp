@@ -31,9 +31,10 @@
 #include "illixr/vk/render_pass.hpp"
 #include "illixr/vk/display_provider.hpp"
 #include "illixr/vk/vulkan_objects.hpp"
-s
+
 #include <cstdlib>
 #include <mutex>
+#include <queue>
 #include <string>
 
 using namespace ILLIXR;
@@ -86,7 +87,7 @@ public:
 
 	pose_type last_pose;
 
-	std::chrono::time_point buffer_start_time;
+	std::chrono::time_point<std::chrono::system_clock> buffer_start_time;
 	std::queue<pose_type> buffered_poses;
 	uint64_t artificial_latency = 0; 
 };
@@ -119,13 +120,13 @@ illixr_read_pose()
 	const fast_pose_type fast_pose = illixr_plugin_obj->sb_pose->get_fast_pose();
 
 	if (illixr_plugin_obj->artificial_latency > 0) {
-		if (buffered_poses.empty()) {
-			illixr_plugin_obj->buffer_start_time = std::chrono::now();
+		if (illixr_plugin_obj->buffered_poses.empty()) {
+			illixr_plugin_obj->buffer_start_time = std::chrono::system_clock::now();
 		}
-		buffered_poses.push(fast_pose.pose);
+		illixr_plugin_obj->buffered_poses.push(fast_pose.pose);
 
-		std::chrono::time_point now = std::chrono::now();
-		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() > illixr_plugin_obj->artificial_latency) {
+		std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - illixr_plugin_obj->buffer_start_time).count() > illixr_plugin_obj->artificial_latency) {
 			const pose_type past_pose = illixr_plugin_obj->buffered_poses.front();
 			illixr_plugin_obj->buffered_poses.pop(); 
 
@@ -147,13 +148,13 @@ illixr_read_pose()
 		}
 	} else {
 		const pose_type curr_pose = fast_pose.pose;
-		ret.orientation.x = pose.orientation.x();
-		ret.orientation.y = pose.orientation.y();
-		ret.orientation.z = pose.orientation.z();
-		ret.orientation.w = pose.orientation.w();
-		ret.position.x = pose.position.x();
-		ret.position.y = pose.position.y();
-		ret.position.z = pose.position.z();
+		ret.orientation.x = curr_pose.orientation.x();
+		ret.orientation.y = curr_pose.orientation.y();
+		ret.orientation.z = curr_pose.orientation.z();
+		ret.orientation.w = curr_pose.orientation.w();
+		ret.position.x = curr_pose.position.x();
+		ret.position.y = curr_pose.position.y();
+		ret.position.z = curr_pose.position.z();
 	}
 
 	return ret;
@@ -217,9 +218,9 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 		for (auto eye = 0; eye < 2; eye++) {
 			image_arr[eye].image = image[i * 4 + eye * 2];
 			image_arr[eye].image_view = image_view[i * 4 + eye  * 2];
-			image_arr[eye].alloc_info[0].size = size[i * 4 + eye * 2];
-			image_arr[eye].alloc_info[0].offset = offset[i * 4 + eye * 2];
-			image_arr[eye].alloc_info[0].memory = device_memory[i * 4 + eye * 2];
+			image_arr[eye].allocation_info.size = size[i * 4 + eye * 2];
+			image_arr[eye].allocation_info.offset = offset[i * 4 + eye * 2];
+			image_arr[eye].allocation_info.deviceMemory = device_memory[i * 4 + eye * 2];
 			image_arr[eye].image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 			image_arr[eye].image_info.format = VK_FORMAT_B8G8R8A8_UNORM;
 			image_arr[eye].image_info.extent = {extent.width, extent.height, 1};
@@ -233,9 +234,9 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 		for (auto eye = 0; eye < 2; eye++) {
 			image_arr[eye].image = image[i * 4 + eye * 2 + 1];
 			image_arr[eye].image_view = image_view[i * 4 + eye  * 2 + 1];
-			image_arr[eye].alloc_info[0].size = size[i * 4 + eye * 2 + 1];
-			image_arr[eye].alloc_info[0].offset = offset[i * 4 + eye * 2 + 1];
-			image_arr[eye].alloc_info[0].memory = device_memory[i * 4 + eye * 2 + 1];
+			image_arr[eye].allocation_info.size = size[i * 4 + eye * 2 + 1];
+			image_arr[eye].allocation_info.offset = offset[i * 4 + eye * 2 + 1];
+			image_arr[eye].allocation_info.deviceMemory = device_memory[i * 4 + eye * 2 + 1];
 			image_arr[eye].image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 			image_arr[eye].image_info.format = illixr_plugin_obj->use_lossy_depth ? VK_FORMAT_B8G8R8A8_UNORM : VK_FORMAT_D32_SFLOAT;
 			image_arr[eye].image_info.extent = {extent.width, extent.height, 1};
@@ -261,6 +262,11 @@ extern "C" void illixr_src_release(int8_t buffer_ind, struct xrt_pose l_pose, st
 					Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
 					};
 	illixr_plugin_obj->buffer_pool->src_release_image(buffer_ind, fast_pose_type {pose, {}, {}});
+}
+
+extern "C" bool illixr_use_lossy_depth() {
+	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	return illixr_plugin_obj->use_lossy_depth;
 }
 
 extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {
