@@ -31,7 +31,7 @@
 #include "illixr/vk/render_pass.hpp"
 #include "illixr/vk/display_provider.hpp"
 #include "illixr/vk/vulkan_objects.hpp"
-
+s
 #include <cstdlib>
 #include <mutex>
 #include <string>
@@ -64,6 +64,10 @@ public:
 		if (std::getenv("ILLIXR_USE_LOSSY_DEPTH") != nullptr) {
 			use_lossy_depth = std::stoi(std::getenv("ILLIXR_USE_LOSSY_DEPTH"));
 		}
+		
+		if (std::getenv("ILLIXR_ARTIFICIAL_LATENCY_MS") != nullptr) {
+			artificial_latency = std::stoi(std::getenv("ILLIXR_ARTIFICIAL_LATENCY_MS"));
+		}
 	}
 
 	std::atomic<bool> ready = false;
@@ -81,6 +85,10 @@ public:
 	switchboard::writer<switchboard::event_wrapper<time_point>> _m_vsync;
 
 	pose_type last_pose;
+
+	std::chrono::time_point buffer_start_time;
+	std::queue<pose_type> buffered_poses;
+	uint64_t artificial_latency = 0; 
 };
 
 static illixr_plugin *illixr_plugin_obj = nullptr;
@@ -109,23 +117,44 @@ illixr_read_pose()
 	}
 	struct xrt_pose ret;
 	const fast_pose_type fast_pose = illixr_plugin_obj->sb_pose->get_fast_pose();
-	const pose_type pose = fast_pose.pose;
 
-	// ret.orientation.x = pose.orientation.x();
-	// ret.orientation.y = pose.orientation.y();
-	// ret.orientation.z = pose.orientation.z();
-	// ret.orientation.w = pose.orientation.w();
-	// ret.position.x = pose.position.x();
-	// ret.position.y = pose.position.y();
-	// ret.position.z = pose.position.z();
+	if (illixr_plugin_obj->artificial_latency > 0) {
+		if (buffered_poses.empty()) {
+			illixr_plugin_obj->buffer_start_time = std::chrono::now();
+		}
+		buffered_poses.push(fast_pose.pose);
 
-	ret.orientation.x = 0;
-	ret.orientation.y = 0;
-	ret.orientation.z = 0;
-	ret.orientation.w = 1;
-	ret.position.x = 0;
-	ret.position.y = 0;
-	ret.position.z = 0;
+		std::chrono::time_point now = std::chrono::now();
+		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() > illixr_plugin_obj->artificial_latency) {
+			const pose_type past_pose = illixr_plugin_obj->buffered_poses.front();
+			illixr_plugin_obj->buffered_poses.pop(); 
+
+			ret.orientation.x = past_pose.orientation.x();
+			ret.orientation.y = past_pose.orientation.y();
+			ret.orientation.z = past_pose.orientation.z();
+			ret.orientation.w = past_pose.orientation.w();
+			ret.position.x = past_pose.position.x();
+			ret.position.y = past_pose.position.y();
+			ret.position.z = past_pose.position.z();
+		} else {
+			ret.orientation.x = 0;
+			ret.orientation.y = 0;
+			ret.orientation.z = 0;
+			ret.orientation.w = 1;
+			ret.position.x = 0;
+			ret.position.y = 0;
+			ret.position.z = 0;
+		}
+	} else {
+		const pose_type curr_pose = fast_pose.pose;
+		ret.orientation.x = pose.orientation.x();
+		ret.orientation.y = pose.orientation.y();
+		ret.orientation.z = pose.orientation.z();
+		ret.orientation.w = pose.orientation.w();
+		ret.position.x = pose.position.x();
+		ret.position.y = pose.position.y();
+		ret.position.z = pose.position.z();
+	}
 
 	return ret;
 }
