@@ -32,7 +32,9 @@
 #include "illixr/vk/display_provider.hpp"
 #include "illixr/vk/vulkan_objects.hpp"
 
+#include <cstdlib>
 #include <mutex>
+#include <string>
 
 using namespace ILLIXR;
 using namespace ILLIXR::vulkan;
@@ -58,9 +60,15 @@ public:
 		, _m_vsync{sb->get_writer<switchboard::event_wrapper<time_point>>("vsync_estimate")}
 	{
 		sb_timewarp = pb_->lookup_impl<timewarp>();
+
+		if (std::getenv("ILLIXR_USE_LOSSY_DEPTH") != nullptr) {
+			use_lossy_depth = std::stoi(std::getenv("ILLIXR_USE_LOSSY_DEPTH"));
+		}
 	}
 
 	std::atomic<bool> ready = false;
+	
+	bool use_lossy_depth = false;
 
 	phonebook *pb;
 	const std::shared_ptr<switchboard> sb;
@@ -200,7 +208,7 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 			image_arr[eye].alloc_info[0].offset = offset[i * 4 + eye * 2 + 1];
 			image_arr[eye].alloc_info[0].memory = device_memory[i * 4 + eye * 2 + 1];
 			image_arr[eye].image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-			image_arr[eye].image_info.format = VK_FORMAT_B8G8R8A8_UNORM;
+			image_arr[eye].image_info.format = illixr_plugin_obj->use_lossy_depth ? VK_FORMAT_B8G8R8A8_UNORM : VK_FORMAT_D32_SFLOAT;
 			image_arr[eye].image_info.extent = {extent.width, extent.height, 1};
 		}
 		depth_image_pool.push_back(image_arr);

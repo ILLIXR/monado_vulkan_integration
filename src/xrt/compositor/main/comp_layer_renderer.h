@@ -36,7 +36,6 @@ struct comp_layer_renderer
 		VkImage depth_image;
 		VkDeviceMemory depth_memory;
 		VkImageView depth_view;
-
 		VkDeviceSize depth_size;
 		VkDeviceSize depth_offset;
 		VkExtent2D depth_extent;
@@ -44,6 +43,9 @@ struct comp_layer_renderer
 		VkImage depth_attachment_image;
 		VkDeviceMemory depth_attachment_memory;
 		VkImageView depth_attachment_view;
+		VkDeviceSize depth_attachment_size;
+		VkDeviceSize depth_attachment_offset;
+		VkExtent2D depth_attachment_extent;
 
 		VkFramebuffer handle;
 	} framebuffers[2 * OFFLOAD_BUFFER_POOL_SIZE];

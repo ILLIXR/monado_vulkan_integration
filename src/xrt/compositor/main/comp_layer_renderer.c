@@ -63,14 +63,14 @@ _init_render_pass(struct vk_bundle *vk,
 	};
 
 	VkAttachmentDescription depth_attachment = {
-		.format = VK_FORMAT_D16_UNORM,
+		.format = VK_FORMAT_D32_SFLOAT,
 		.samples = VK_SAMPLE_COUNT_1_BIT,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+		.finalLayout = final_layout,
 		.flags = 0,
 	};
 
@@ -723,15 +723,19 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 	vk_check_error("vk_create_view", res, false);
 
 	// Actual depth image for the depth attachment
-	VkFormat depth_format = VK_FORMAT_D16_UNORM;
+	VkFormat depth_format = VK_FORMAT_D32_SFLOAT;
 
 	VkImageUsageFlags depth_usage =                   //
 	    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | //
 	    VK_IMAGE_USAGE_SAMPLED_BIT;
 
-	res = vk_create_image_simple(vk, self->extent, depth_format, depth_usage, &self->framebuffers[eye].depth_attachment_memory,
-	                             &self->framebuffers[eye].depth_attachment_image);
-	vk_check_error("vk_create_image_simple", res, false);
+	res = vk_create_image_exported(vk, self->extent, depth_format, depth_usage,
+		&self->framebuffers[eye].depth_attachment_memory,
+		&self->framebuffers[eye].depth_attachment_size,
+		&self->framebuffers[eye].depth_attachment_offset,
+	    &self->framebuffers[eye].depth_attachment_image);
+	self->framebuffers[eye].depth_attachment_extent = self->extent;
+	vk_check_error("vk_create_image_exported", res, false);
 
 	VkImageSubresourceRange depth_range = {
 	    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
