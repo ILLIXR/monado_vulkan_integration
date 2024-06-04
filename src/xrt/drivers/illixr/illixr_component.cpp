@@ -162,14 +162,6 @@ illixr_read_pose()
 		ret.position.z = curr_pose.position.z();
 	}
 
-	ret.orientation.x = 0;
-	ret.orientation.y = 0;
-	ret.orientation.z = 0;
-	ret.orientation.w = 1;
-	ret.position.x = 0;
-	ret.position.y = 0;
-	ret.position.z = 0;
-
 	return ret;
 }
 

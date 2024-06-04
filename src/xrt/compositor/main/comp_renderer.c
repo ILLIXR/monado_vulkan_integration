@@ -950,6 +950,26 @@ get_image_view(const struct comp_swapchain_image *image, enum xrt_layer_composit
 // 	renderer_build_rendering(r, rr, rts, src_samplers, src_image_views, src_norm_rects);
 // }
 
+static void
+release_frame(struct comp_layer_renderer *lr, uint8_t buffer_ind) {
+	struct comp_render_layer *layer;
+	for (int i = 0; i < lr->layer_count; i++) {
+		layer = lr->layers[i];
+		if (layer->type == XRT_LAYER_STEREO_PROJECTION || layer->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
+			break;
+		}
+	}
+
+	if (layer) {
+		illixr_src_release(buffer_ind, layer->l_pose, layer->r_pose);
+	} else {
+		struct xrt_pose l_pose = {0};
+		struct xrt_pose r_pose = {0};
+		illixr_src_release(buffer_ind, l_pose, r_pose);
+		printf("WARNING: no projection layer found\n");
+	}
+}
+
 /*!
  * @pre render_gfx_init(rr, &c->nr)
  */
@@ -977,6 +997,11 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		uint8_t ind = illixr_src_acquire();
 		comp_layer_renderer_draw(r->lr, ind);
 
+		// If the frame is offloaded, we can release the images right after layer composition (?)
+		if (illixr_offload_frames()) {
+			release_frame(r->lr, ind);
+		}
+
 		VkSampler clamp_to_border_black = r->c->nr.samplers.clamp_to_border_black;
 		VkSampler src_samplers[2] = {
 		    clamp_to_border_black,
@@ -993,25 +1018,12 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		};
 
 		renderer_build_rendering(r, rr, rtr, src_samplers, src_image_views, src_norm_rects, ind);
-
-		struct comp_render_layer *layer;
-		for (int i = 0; i < r->lr->layer_count; i++) {
-			layer = r->lr->layers[i];
-			if (layer->type == XRT_LAYER_STEREO_PROJECTION || layer->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
-				break;
-			}
-		}
-
-		if (layer) {
-			illixr_src_release(ind, layer->l_pose, layer->r_pose);
-		} else {
-			struct xrt_pose l_pose = {0};
-			struct xrt_pose r_pose = {0};
-			illixr_src_release(ind, l_pose, r_pose);
-			printf("WARNING: no projection layer found\n");
-		}
-
 		renderer_submit_queue(r, rr->r->cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
+		// If the frame isn't offloaded, the images need to be available until warping is complete.
+		if (!illixr_offload_frames()) {
+			release_frame(r->lr, ind);
+		}
 
 		return;
 	}
