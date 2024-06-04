@@ -229,7 +229,8 @@ renderer_build_rendering(struct comp_renderer *r,
                          struct render_gfx_target_resources *rtr,
                          VkSampler src_samplers[2],
                          VkImageView src_image_views[2],
-                         struct xrt_normalized_rect src_norm_rects[2])
+                         struct xrt_normalized_rect src_norm_rects[2],
+						 uint8_t buffer_ind)
 {
 	COMP_TRACE_MARKER();
 
@@ -266,45 +267,47 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * Update
 	 */
 
-	struct render_gfx_mesh_ubo_data distortion_data[2] = {
-	    {
-	        .vertex_rot = l_v->rot,
-	        .post_transform = src_norm_rects[0],
-	    },
-	    {
-	        .vertex_rot = r_v->rot,
-	        .post_transform = src_norm_rects[1],
-	    },
-	};
+	if (illixr_offload_frames()) {
+		struct render_gfx_mesh_ubo_data distortion_data[2] = {
+			{
+				.vertex_rot = l_v->rot,
+				.post_transform = src_norm_rects[0],
+			},
+			{
+				.vertex_rot = r_v->rot,
+				.post_transform = src_norm_rects[1],
+			},
+		};
 
-	const struct xrt_matrix_2x2 rotation_90_cw = {{
-	    .vecs =
-	        {
-	            {0, 1},
-	            {-1, 0},
-	        },
-	}};
+		const struct xrt_matrix_2x2 rotation_90_cw = {{
+			.vecs =
+				{
+					{0, 1},
+					{-1, 0},
+				},
+		}};
 
-	if (pre_rotate) {
-		m_mat2x2_multiply(&distortion_data[0].vertex_rot,  //
-		                  &rotation_90_cw,                 //
-		                  &distortion_data[0].vertex_rot); //
-		m_mat2x2_multiply(&distortion_data[1].vertex_rot,  //
-		                  &rotation_90_cw,                 //
-		                  &distortion_data[1].vertex_rot); //
+		if (pre_rotate) {
+			m_mat2x2_multiply(&distortion_data[0].vertex_rot,  //
+							&rotation_90_cw,                 //
+							&distortion_data[0].vertex_rot); //
+			m_mat2x2_multiply(&distortion_data[1].vertex_rot,  //
+							&rotation_90_cw,                 //
+							&distortion_data[1].vertex_rot); //
+		}
+
+		render_gfx_update_distortion(rr,                   //
+									0,                    // view_index
+									src_samplers[0],      //
+									src_image_views[0],   //
+									&distortion_data[0]); //
+
+		render_gfx_update_distortion(rr,                   //
+									1,                    // view_index
+									src_samplers[1],      //
+									src_image_views[1],   //
+									&distortion_data[1]); //
 	}
-
-	render_gfx_update_distortion(rr,                   //
-	                             0,                    // view_index
-	                             src_samplers[0],      //
-	                             src_image_views[0],   //
-	                             &distortion_data[0]); //
-
-	render_gfx_update_distortion(rr,                   //
-	                             1,                    // view_index
-	                             src_samplers[1],      //
-	                             src_image_views[1],   //
-	                             &distortion_data[1]); //
 
 	// ILLIXR: get pose from projection layer
 	struct comp_render_layer *layer;
@@ -315,11 +318,11 @@ renderer_build_rendering(struct comp_renderer *r,
 		}
 	}
 
-	// if (layer) {
-	// 	illixr_tw_update_uniforms(layer->l_pose, layer->r_pose);
-	// } else {
-	// 	printf("WARNING: no projection layer found\n");
-	// }
+	if (layer) {
+		illixr_tw_update_uniforms(layer->l_pose, layer->r_pose);
+	} else {
+		printf("WARNING: no projection layer found\n");
+	}
 
 	/*
 	 * Target
@@ -327,11 +330,13 @@ renderer_build_rendering(struct comp_renderer *r,
 
 	// OpenWarp is responsible for beginning the render pass and setting the viewport
 
-	render_gfx_begin_target( //
-	    rr,                  //
-	    rtr);                //
+	if (illixr_offload_frames()) {
+		render_gfx_begin_target( //
+			rr,                  //
+			rtr);                //
+	}
 
-	// rr->rtr = rtr;
+	rr->rtr = rtr;
 
 	/*
 	 * Viewport one
@@ -342,9 +347,11 @@ renderer_build_rendering(struct comp_renderer *r,
 	                      0,                 // view_index
 	                      &l_viewport_data); // viewport_data
 
-	render_gfx_distortion(rr);
+	if (illixr_offload_frames()) {
+		render_gfx_distortion(rr);
+	}
 
-	// illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 1);
+	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, buffer_ind, 1);
 
 	render_gfx_end_view(rr);
 
@@ -358,9 +365,11 @@ renderer_build_rendering(struct comp_renderer *r,
 	                      1,                 // view_index
 	                      &r_viewport_data); // viewport_data
 
-	render_gfx_distortion(rr);
+	if (illixr_offload_frames()) {
+		render_gfx_distortion(rr);
+	}
 
-	// illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, 0, 0);
+	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, buffer_ind, 0);
 
 	render_gfx_end_view(rr);
 
@@ -369,7 +378,9 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * End
 	 */
 
-	render_gfx_end_target(rr);
+	if (illixr_offload_frames()) {
+		render_gfx_end_target(rr);
+	}
 
 	// Make the command buffer usable.
 	render_gfx_end(rr);
@@ -610,7 +621,7 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 		}
 
 
-		illixr_initialize_timewarp(r->lr->render_pass, 0, r->lr->framebuffers[0].image_extent, images, image_view, device_memory, size, offset, OFFLOAD_BUFFER_POOL_SIZE);
+		illixr_initialize_timewarp(r->rtr_array[0].render_pass, 0, r->lr->framebuffers[0].image_extent, images, image_view, device_memory, size, offset, OFFLOAD_BUFFER_POOL_SIZE);
 	}
 
 	return true;
@@ -903,41 +914,41 @@ get_image_view(const struct comp_swapchain_image *image, enum xrt_layer_composit
 /*!
  * @pre render_gfx_init(rr, &c->nr)
  */
-static void
-do_gfx_mesh_and_proj(struct comp_renderer *r,
-                     struct render_gfx *rr,
-                     struct render_gfx_target_resources *rts,
-                     const struct comp_layer *layer,
-                     const struct xrt_layer_projection_view_data *lvd,
-                     const struct xrt_layer_projection_view_data *rvd)
-{
-	const struct xrt_layer_data *data = &layer->data;
-	const uint32_t left_array_index = lvd->sub.array_index;
-	const uint32_t right_array_index = rvd->sub.array_index;
-	const struct comp_swapchain_image *left = &layer->sc_array[0]->images[lvd->sub.image_index];
-	const struct comp_swapchain_image *right = &layer->sc_array[1]->images[rvd->sub.image_index];
+// static void
+// do_gfx_mesh_and_proj(struct comp_renderer *r,
+//                      struct render_gfx *rr,
+//                      struct render_gfx_target_resources *rts,
+//                      const struct comp_layer *layer,
+//                      const struct xrt_layer_projection_view_data *lvd,
+//                      const struct xrt_layer_projection_view_data *rvd)
+// {
+// 	const struct xrt_layer_data *data = &layer->data;
+// 	const uint32_t left_array_index = lvd->sub.array_index;
+// 	const uint32_t right_array_index = rvd->sub.array_index;
+// 	const struct comp_swapchain_image *left = &layer->sc_array[0]->images[lvd->sub.image_index];
+// 	const struct comp_swapchain_image *right = &layer->sc_array[1]->images[rvd->sub.image_index];
 
-	struct xrt_normalized_rect src_norm_rects[2] = {lvd->sub.norm_rect, rvd->sub.norm_rect};
-	if (data->flip_y) {
-		src_norm_rects[0].h = -src_norm_rects[0].h;
-		src_norm_rects[0].y = 1 + src_norm_rects[0].y;
-		src_norm_rects[1].h = -src_norm_rects[1].h;
-		src_norm_rects[1].y = 1 + src_norm_rects[1].y;
-	}
+// 	struct xrt_normalized_rect src_norm_rects[2] = {lvd->sub.norm_rect, rvd->sub.norm_rect};
+// 	if (data->flip_y) {
+// 		src_norm_rects[0].h = -src_norm_rects[0].h;
+// 		src_norm_rects[0].y = 1 + src_norm_rects[0].y;
+// 		src_norm_rects[1].h = -src_norm_rects[1].h;
+// 		src_norm_rects[1].y = 1 + src_norm_rects[1].y;
+// 	}
 
-	VkSampler clamp_to_border_black = rr->r->samplers.clamp_to_border_black;
-	VkSampler src_samplers[2] = {
-	    clamp_to_border_black,
-	    clamp_to_border_black,
-	};
+// 	VkSampler clamp_to_border_black = rr->r->samplers.clamp_to_border_black;
+// 	VkSampler src_samplers[2] = {
+// 	    clamp_to_border_black,
+// 	    clamp_to_border_black,
+// 	};
 
-	VkImageView src_image_views[2] = {
-	    get_image_view(left, data->flags, left_array_index),
-	    get_image_view(right, data->flags, right_array_index),
-	};
+// 	VkImageView src_image_views[2] = {
+// 	    get_image_view(left, data->flags, left_array_index),
+// 	    get_image_view(right, data->flags, right_array_index),
+// 	};
 
-	renderer_build_rendering(r, rr, rts, src_samplers, src_image_views, src_norm_rects);
-}
+// 	renderer_build_rendering(r, rr, rts, src_samplers, src_image_views, src_norm_rects);
+// }
 
 /*!
  * @pre render_gfx_init(rr, &c->nr)
@@ -981,7 +992,24 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		    {.x = 0, .y = 0, .w = 1, .h = 1},
 		};
 
-		renderer_build_rendering(r, rr, rtr, src_samplers, src_image_views, src_norm_rects);
+		renderer_build_rendering(r, rr, rtr, src_samplers, src_image_views, src_norm_rects, ind);
+
+		struct comp_render_layer *layer;
+		for (int i = 0; i < r->lr->layer_count; i++) {
+			layer = r->lr->layers[i];
+			if (layer->type == XRT_LAYER_STEREO_PROJECTION || layer->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
+				break;
+			}
+		}
+
+		if (layer) {
+			illixr_src_release(ind, layer->l_pose, layer->r_pose);
+		} else {
+			struct xrt_pose l_pose = {0};
+			struct xrt_pose r_pose = {0};
+			illixr_src_release(ind, l_pose, r_pose);
+			printf("WARNING: no projection layer found\n");
+		}
 
 		renderer_submit_queue(r, rr->r->cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
@@ -1013,7 +1041,7 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		c->base.slot.fovs[0] = lvd->fov;
 		c->base.slot.fovs[1] = rvd->fov;
 
-		do_gfx_mesh_and_proj(r, rr, rtr, layer, lvd, rvd);
+		// do_gfx_mesh_and_proj(r, rr, rtr, layer, lvd, rvd);
 
 		renderer_submit_queue(r, rr->r->cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
@@ -1031,7 +1059,7 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		c->base.slot.fovs[0] = lvd->fov;
 		c->base.slot.fovs[1] = rvd->fov;
 
-		do_gfx_mesh_and_proj(r, rr, rtr, layer, lvd, rvd);
+		// do_gfx_mesh_and_proj(r, rr, rtr, layer, lvd, rvd);
 
 		renderer_submit_queue(r, rr->r->cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 

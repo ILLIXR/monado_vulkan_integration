@@ -10,6 +10,7 @@
 
 #include <xcb/xcb.h>
 #include <xcb/randr.h>
+#include <xcb/xcb_icccm.h>
 
 #include "render/render_interface.h"
 #include "util/u_misc.h"
@@ -205,53 +206,15 @@ comp_window_xcb_init(struct comp_target *ct)
 
 	w_xcb->screen = iter.data;
 
-	if (ct->c->settings.fullscreen) {
-		comp_window_xcb_get_randr_outputs(w_xcb);
-
-		if (ct->c->settings.display > (int)w_xcb->display_count - 1) {
-			COMP_DEBUG(ct->c,
-			           "Requested display %d, but only %d "
-			           "displays are available.",
-			           ct->c->settings.display, w_xcb->display_count);
-
-			ct->c->settings.display = 0;
-			struct comp_window_xcb_display *d = comp_window_xcb_current_display(w_xcb);
-			COMP_DEBUG(ct->c, "Selecting '%s' instead.", d->name);
-		}
-
-		if (ct->c->settings.display == -1)
-			ct->c->settings.display = 0;
-
-		struct comp_window_xcb_display *d = comp_window_xcb_current_display(w_xcb);
-
-		if (d->size.width == 0 || d->size.height == 0) {
-			COMP_WARN(ct->c, "Selected display %d has no size", w_xcb->base.base.c->settings.display);
-			if (select_new_current_display(ct)) {
-				d = comp_window_xcb_current_display(w_xcb);
-				COMP_WARN(ct->c, "Falling back to display %d: %s", w_xcb->base.base.c->settings.display,
-				          d->name);
-			} else {
-				COMP_ERROR(ct->c, "No suitable display found, disabling fullscreen");
-				w_xcb->base.base.c->settings.fullscreen = false;
-			}
-		}
-
-		if (d->size.width != 0 && d->size.height != 0) {
-			ct->c->settings.preferred.width = d->size.width;
-			ct->c->settings.preferred.height = d->size.height;
-			COMP_DEBUG(ct->c, "Setting window size %dx%d.", d->size.width, d->size.height);
-
-			// TODO: size cb
-			// set_size_cb(settings->width, settings->height);
-		}
-	}
 
 	comp_window_xcb_create_window(w_xcb, ct->c->settings.preferred.width, ct->c->settings.preferred.height);
 
-	comp_window_xcb_connect_delete_event(w_xcb);
+	xcb_size_hints_t hints;
+	xcb_icccm_size_hints_set_min_size(&hints, ct->c->settings.preferred.width, ct->c->settings.preferred.height);
+	xcb_icccm_size_hints_set_max_size(&hints, ct->c->settings.preferred.width, ct->c->settings.preferred.height);
+	xcb_icccm_set_wm_normal_hints(w_xcb->connection, w_xcb->window, &hints);
 
-	if (ct->c->settings.fullscreen)
-		comp_window_xcb_set_full_screen(w_xcb);
+	comp_window_xcb_connect_delete_event(w_xcb);
 
 	xcb_map_window(w_xcb->connection, w_xcb->window);
 

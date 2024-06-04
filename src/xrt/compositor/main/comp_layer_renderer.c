@@ -360,7 +360,6 @@ _init_graphics_pipeline(struct comp_layer_renderer *self,
 		}
     };
 
-
 	VkGraphicsPipelineCreateInfo pipeline_info = {
 	    .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 	    .layout = self->pipeline_layout,
@@ -989,23 +988,6 @@ comp_layer_renderer_draw(struct comp_layer_renderer *self, int8_t ind)
 
 	// Done writing commands, submit to queue, waits for command to finish.
 	ret = vk_cmd_pool_end_submit_wait_and_free_cmd_buffer_locked(vk, pool, cmd_buffer);
-
-	struct comp_render_layer *layer;
-	for (int i = 0; i < self->layer_count; i++) {
-		layer = self->layers[i];
-		if (layer->type == XRT_LAYER_STEREO_PROJECTION || layer->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
-			break;
-		}
-	}
-
-	if (layer) {
-		illixr_src_release(ind, layer->l_pose, layer->r_pose);
-	} else {
-		struct xrt_pose l_pose = {0};
-		struct xrt_pose r_pose = {0};
-		illixr_src_release(ind, l_pose, r_pose);
-		printf("WARNING: no projection layer found\n");
-	}
 
 	// Done submitting commands.
 	vk_cmd_pool_unlock(pool);

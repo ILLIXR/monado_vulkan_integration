@@ -65,6 +65,10 @@ public:
 		if (std::getenv("ILLIXR_USE_LOSSY_DEPTH") != nullptr) {
 			use_lossy_depth = std::stoi(std::getenv("ILLIXR_USE_LOSSY_DEPTH"));
 		}
+
+		if (std::getenv("ILLIXR_OFFLOAD_FRAMES") != nullptr) {
+			offload_frames = std::stoi(std::getenv("ILLIXR_OFFLOAD_FRAMES"));
+		}
 		
 		if (std::getenv("ILLIXR_ARTIFICIAL_LATENCY_MS") != nullptr) {
 			artificial_latency = std::stoi(std::getenv("ILLIXR_ARTIFICIAL_LATENCY_MS"));
@@ -73,6 +77,7 @@ public:
 
 	std::atomic<bool> ready = false;
 	
+	bool offload_frames = false;
 	bool use_lossy_depth = false;
 
 	phonebook *pb;
@@ -156,6 +161,14 @@ illixr_read_pose()
 		ret.position.y = curr_pose.position.y();
 		ret.position.z = curr_pose.position.z();
 	}
+
+	ret.orientation.x = 0;
+	ret.orientation.y = 0;
+	ret.orientation.z = 0;
+	ret.orientation.w = 1;
+	ret.position.x = 0;
+	ret.position.y = 0;
+	ret.position.z = 0;
 
 	return ret;
 }
@@ -269,24 +282,37 @@ extern "C" bool illixr_use_lossy_depth() {
 	return illixr_plugin_obj->use_lossy_depth;
 }
 
-extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {
-	// assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
-	//
-	// pose_type pose {time_point{},
-	// 				Eigen::Vector3f {(l_pose.position.x + r_pose.position.x) / 2, (l_pose.position.y + r_pose.position.y) / 2, (l_pose.position.z + r_pose.position.z) / 2},
-	// 				Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
-	// 				};
-	// illixr_plugin_obj->last_pose = pose;
+extern "C" bool illixr_offload_frames() {
+	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	return illixr_plugin_obj->offload_frames;
 }
 
-extern "C" void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, int buffer_ind, int left) {
-	// assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
-	// illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->last_pose);
-	// illixr_plugin_obj->sb_timewarp->record_command_buffer(commandBuffer, buffer_ind, left);
+extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {
+	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	
+	if (!illixr_plugin_obj->offload_frames) {
+		pose_type pose {time_point{},
+					Eigen::Vector3f {(l_pose.position.x + r_pose.position.x) / 2, (l_pose.position.y + r_pose.position.y) / 2, (l_pose.position.z + r_pose.position.z) / 2},
+					Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
+					};
+		illixr_plugin_obj->last_pose = pose;
+	}
+}
+
+extern "C" void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, VkFramebuffer framebuffer, int buffer_ind, int left) {
+	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+
+	if (!illixr_plugin_obj->offload_frames) {
+		illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->last_pose);
+		illixr_plugin_obj->sb_timewarp->record_command_buffer(commandBuffer, framebuffer, buffer_ind, left);
+	}
 }
 
 extern "C" void illixr_publish_vsync_estimate(uint64_t display_time_ns) {
-	// assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
-	// auto relative_time = time_point{time_point{std::chrono::nanoseconds(display_time_ns)} - illixr_plugin_obj->sb_clock->start_time()};
-	// illixr_plugin_obj->_m_vsync.put(illixr_plugin_obj->_m_vsync.allocate<switchboard::event_wrapper<time_point>>(relative_time));
+	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+
+	if (!illixr_plugin_obj->offload_frames) {
+		auto relative_time = time_point{time_point{std::chrono::nanoseconds(display_time_ns)} - illixr_plugin_obj->sb_clock->start_time()};
+		illixr_plugin_obj->_m_vsync.put(illixr_plugin_obj->_m_vsync.allocate<switchboard::event_wrapper<time_point>>(relative_time));
+	}
 }
