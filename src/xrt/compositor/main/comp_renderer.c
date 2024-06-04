@@ -997,11 +997,6 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		uint8_t ind = illixr_src_acquire();
 		comp_layer_renderer_draw(r->lr, ind);
 
-		// If the frame is offloaded, we can release the images right after layer composition (?)
-		if (illixr_offload_frames()) {
-			release_frame(r->lr, ind);
-		}
-
 		VkSampler clamp_to_border_black = r->c->nr.samplers.clamp_to_border_black;
 		VkSampler src_samplers[2] = {
 		    clamp_to_border_black,
