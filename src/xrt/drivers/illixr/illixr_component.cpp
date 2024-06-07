@@ -94,6 +94,7 @@ public:
 
 	std::chrono::time_point<std::chrono::system_clock> buffer_start_time;
 	std::queue<pose_type> buffered_poses;
+	std::mutex buffered_pose_mutex;
 	uint64_t artificial_latency = 0; 
 };
 
@@ -125,6 +126,8 @@ illixr_read_pose()
 	const fast_pose_type fast_pose = illixr_plugin_obj->sb_pose->get_fast_pose();
 
 	if (illixr_plugin_obj->artificial_latency > 0) {
+		std::lock_guard<std::mutex> lock(illixr_plugin_obj->buffered_pose_mutex);
+		
 		if (illixr_plugin_obj->buffered_poses.empty()) {
 			illixr_plugin_obj->buffer_start_time = std::chrono::system_clock::now();
 		}
