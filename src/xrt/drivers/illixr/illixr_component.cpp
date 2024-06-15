@@ -266,7 +266,7 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 
 	auto buffer_pool = std::make_shared<vulkan::buffer_pool<fast_pose_type>>(image_pool, depth_image_pool);
 	illixr_plugin_obj->buffer_pool = buffer_pool;
-	illixr_plugin_obj->sb_timewarp->setup(render_pass, subpass, std::move(buffer_pool), false);
+	illixr_plugin_obj->sb_timewarp->setup(render_pass, subpass, std::move(buffer_pool), true);
 	std::cout << PREFIX << "Initialized timewarp" << std::endl;
 }
 
