@@ -17,6 +17,8 @@
 #include "xrt/xrt_compiler.h"
 #include "main/comp_window.h"
 
+#include <stdlib.h>
+
 /*
  *
  * Private structs.
@@ -215,6 +217,11 @@ comp_window_xcb_init(struct comp_target *ct)
 	xcb_icccm_set_wm_normal_hints(w_xcb->connection, w_xcb->window, &hints);
 
 	comp_window_xcb_connect_delete_event(w_xcb);
+
+	if (getenv("ILLIXR_SET_FULLSCREEN") != NULL && atoi(getenv("ILLIXR_SET_FULLSCREEN")) > 0)
+	{
+		comp_window_xcb_set_full_screen(w_xcb);
+	}
 
 	xcb_map_window(w_xcb->connection, w_xcb->window);
 
