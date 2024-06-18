@@ -102,8 +102,8 @@ comp_settings_init(struct comp_settings *s, struct xrt_device *xdev)
 		s->target_identifier = "x11";
 
 		// HMD screen tends to be much larger then monitors.
-		s->preferred.width /= 2;
-		s->preferred.height /= 2;
+		// s->preferred.width /= 2;
+		// s->preferred.height /= 2;
 	}
 	if (debug_get_bool_option_force_wayland()) {
 		s->target_identifier = "wayland";
