@@ -197,7 +197,12 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 	dh->base.name = XRT_DEVICE_GENERIC_HMD;
 	dh->base.device_type = XRT_DEVICE_TYPE_HMD;
 
-	dh->base.hmd->screens[0].nominal_frame_interval_ns = 1000000000 / 90;
+	// Read framerate from environment variable
+	if (std::getenv("ILLIXR_OFFLOAD_RENDERING_FRAMERATE") != nullptr) {
+		dh->base.hmd->screens[0].nominal_frame_interval_ns = 1000000000 / std::stoi(std::getenv("ILLIXR_OFFLOAD_RENDERING_FRAMERATE"));
+	} else {
+		dh->base.hmd->screens[0].nominal_frame_interval_ns = 1000000000 / 90;
+	}
 
 	size_t idx = 0;
 	dh->base.hmd->blend_modes[idx++] = XRT_BLEND_MODE_OPAQUE;
@@ -233,12 +238,32 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 		return NULL;
 	}
 
+	// Read ILLIXR_OVERSCAN from environment variable
+	float scale = 1.0f;
+	if (std::getenv("ILLIXR_OVERSCAN") != nullptr) {
+		scale = std::stof(std::getenv("ILLIXR_OVERSCAN"));
+	}
+
+
 	// The server may render at a different FOV than the client.
 	for (int eye = 0; eye < 2; eye++) {
-		dh->base.hmd->distortion.fov[eye].angle_left = ILLIXR::server_params::fov_left[eye];
-		dh->base.hmd->distortion.fov[eye].angle_right = ILLIXR::server_params::fov_right[eye];
-		dh->base.hmd->distortion.fov[eye].angle_up = ILLIXR::server_params::fov_up[eye];
-		dh->base.hmd->distortion.fov[eye].angle_down = ILLIXR::server_params::fov_down[eye];
+		float tan_left = ILLIXR::server_params::fov_left[eye];
+		float tan_right = ILLIXR::server_params::fov_right[eye];
+		float tan_up = ILLIXR::server_params::fov_up[eye];
+		float tan_down = ILLIXR::server_params::fov_down[eye];
+		float fov_left = std::atan(tan_left);
+		float fov_right = std::atan(tan_right);
+		float fov_up = std::atan(tan_up);
+		float fov_down = std::atan(tan_down);
+		tan_left = std::tan(fov_left * scale);
+		tan_right = std::tan(fov_right * scale);
+		tan_up = std::tan(fov_up * scale);
+		tan_down = std::tan(fov_down * scale);
+
+		dh->base.hmd->distortion.fov[eye].angle_left = tan_left;
+		dh->base.hmd->distortion.fov[eye].angle_right = tan_right;
+		dh->base.hmd->distortion.fov[eye].angle_up = tan_up;
+		dh->base.hmd->distortion.fov[eye].angle_down = tan_down;
 	}
 
 	// Setup variable tracker.
