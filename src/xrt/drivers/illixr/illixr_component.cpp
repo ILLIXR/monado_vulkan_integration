@@ -47,6 +47,10 @@ class monado_vulkan_display_provider : public display_provider {
 
 };
 
+class monado_compositor_app : public app {
+
+};
+
 static std::atomic<bool> _ds_ready = false;
 
 /// Simulated plugin class for an instance during phonebook registration
@@ -75,6 +79,10 @@ public:
 			artificial_latency = std::stoi(std::getenv("ILLIXR_ARTIFICIAL_LATENCY_MS"));
 		}
 
+		if (std::getenv("ILLIXR_COMPOSITOR_SLEEP_NS") != nullptr) {
+			sleep_time = std::stoi(std::getenv("ILLIXR_COMPOSITOR_SLEEP_NS"));
+		}
+
 		if (std::getenv("ILLIXR_POSE_DUMP") != nullptr) {
 			dump_poses = true;
 			std::string file_dump = std::getenv("ILLIXR_POSE_DUMP");
@@ -87,6 +95,7 @@ public:
 	
 	bool offload_frames = false;
 	bool use_lossy_depth = false;
+	int sleep_time = -1;
 
 	phonebook *pb;
 	const std::shared_ptr<switchboard> sb;
@@ -292,6 +301,11 @@ extern "C" bool illixr_use_lossy_depth() {
 extern "C" bool illixr_offload_frames() {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 	return illixr_plugin_obj->offload_frames;
+}
+
+extern "C" int illixr_sleep_time() {
+	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	return illixr_plugin_obj->sleep_time;
 }
 
 extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {

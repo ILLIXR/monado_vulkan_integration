@@ -463,6 +463,11 @@ multi_main_loop(struct multi_system_compositor *msc)
 		    &predicted_display_time_ns,    //
 		    &predicted_display_period_ns); //
 
+		// printf("Predicted GPU time: %u ns\n", predicted_gpu_time_ns);
+		// printf("Predicted Display Time: %u ns\n", predicted_display_time_ns);
+		// printf("Predicted Display Period: %u ns\n", predicted_display_period_ns);
+		// printf("Wake up time: %u ns\n", wake_up_time_ns);
+
 		// ILLIXR: publish predicted swap time to switchboard
 		illixr_publish_vsync_estimate(predicted_display_time_ns);
 
@@ -470,7 +475,17 @@ multi_main_loop(struct multi_system_compositor *msc)
 		broadcast_timings_to_clients(msc, predicted_display_time_ns);
 
 		// Now we can wait.
-		wait_frame(&sleeper, xc, frame_id, wake_up_time_ns);
+		if (illixr_sleep_time() >= 0) {
+			uint32_t delay = (uint32_t) illixr_sleep_time();
+			os_precise_sleeper_nanosleep(&sleeper, delay);
+
+			uint64_t now_ns = os_monotonic_get_ns();
+
+			// Signal that we woke up.
+			xrt_comp_mark_frame(xc, frame_id, XRT_COMPOSITOR_FRAME_POINT_WOKE, now_ns);
+		} else {
+			wait_frame(&sleeper, xc, frame_id, wake_up_time_ns);
+		}
 
 		uint64_t now_ns = os_monotonic_get_ns();
 		uint64_t diff_ns = predicted_display_time_ns - now_ns;
