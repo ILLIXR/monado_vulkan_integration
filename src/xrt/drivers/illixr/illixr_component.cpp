@@ -55,10 +55,10 @@ class illixr_plugin : public plugin
 public:
 	illixr_plugin(std::string name_, phonebook *pb_)
 	    : plugin{name_, pb_}
-		, pb{pb_}
-		, sb{pb->lookup_impl<switchboard>()}
-		, sb_pose{pb->lookup_impl<pose_prediction>()}
-		, sb_clock{pb->lookup_impl<RelativeClock>()}
+		, phonebook_{pb_}
+		, sb{phonebook_->lookup_impl<switchboard>()}
+		, sb_pose{phonebook_->lookup_impl<pose_prediction>()}
+		, sb_clock{phonebook_->lookup_impl<relative_clock>()}
 		, _m_vsync{sb->get_writer<switchboard::event_wrapper<time_point>>("vsync_estimate")}
 	{
 		sb_timewarp = pb_->lookup_impl<timewarp>();
@@ -70,7 +70,7 @@ public:
 		if (std::getenv("ILLIXR_OFFLOAD_FRAMES") != nullptr) {
 			offload_frames = std::stoi(std::getenv("ILLIXR_OFFLOAD_FRAMES"));
 		}
-		
+
 		if (std::getenv("ILLIXR_ARTIFICIAL_LATENCY_MS") != nullptr) {
 			artificial_latency = std::stoi(std::getenv("ILLIXR_ARTIFICIAL_LATENCY_MS"));
 		}
@@ -84,14 +84,14 @@ public:
 	}
 
 	std::atomic<bool> ready = false;
-	
+
 	bool offload_frames = false;
 	bool use_lossy_depth = false;
 
-	phonebook *pb;
+	phonebook *phonebook_;
 	const std::shared_ptr<switchboard> sb;
 	const std::shared_ptr<pose_prediction> sb_pose;
-	const std::shared_ptr<RelativeClock> sb_clock;
+	const std::shared_ptr<relative_clock> sb_clock;
 	std::shared_ptr<timewarp> sb_timewarp;
 	std::shared_ptr<vulkan::buffer_pool<fast_pose_type>> buffer_pool;
 
@@ -103,7 +103,7 @@ public:
 	std::chrono::time_point<std::chrono::system_clock> buffer_start_time;
 	std::queue<pose_type> buffered_poses;
 	std::mutex buffered_pose_mutex;
-	uint64_t artificial_latency = 0; 
+	uint64_t artificial_latency = 0;
 
 	bool dump_poses = false;
 	std::ofstream pose_file;
@@ -113,9 +113,9 @@ public:
 static illixr_plugin *illixr_plugin_obj = nullptr;
 
 extern "C" plugin *
-illixr_monado_create_plugin(phonebook *pb)
+illixr_monado_create_plugin(phonebook *phonebook_)
 {
-	illixr_plugin_obj = new illixr_plugin{"illixr_plugin", pb};
+	illixr_plugin_obj = new illixr_plugin{"illixr_plugin", phonebook_};
 	illixr_plugin_obj->start();
 	return illixr_plugin_obj;
 }
@@ -139,7 +139,7 @@ illixr_read_pose()
 
 	if (illixr_plugin_obj->artificial_latency > 0) {
 		std::lock_guard<std::mutex> lock(illixr_plugin_obj->buffered_pose_mutex);
-		
+
 		if (illixr_plugin_obj->buffered_poses.empty()) {
 			illixr_plugin_obj->buffer_start_time = std::chrono::system_clock::now();
 		}
@@ -148,7 +148,7 @@ illixr_read_pose()
 		std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
 		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - illixr_plugin_obj->buffer_start_time).count() > illixr_plugin_obj->artificial_latency) {
 			const pose_type past_pose = illixr_plugin_obj->buffered_poses.front();
-			illixr_plugin_obj->buffered_poses.pop(); 
+			illixr_plugin_obj->buffered_poses.pop();
 
 			ret.orientation.x = past_pose.orientation.x();
 			ret.orientation.y = past_pose.orientation.y();
@@ -207,7 +207,7 @@ extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, Vk
 
 	_ds_ready = true;
 
-	illixr_plugin_obj->pb->register_impl<display_provider>(std::static_pointer_cast<display_provider>(ds));
+	illixr_plugin_obj->phonebook_->register_impl<display_provider>(std::static_pointer_cast<display_provider>(ds));
 	illixr_plugin_obj->ds = ds;
 }
 
@@ -310,7 +310,7 @@ extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {
 
 			// Prints as: [time] [position] [orientation] without any metadata
 			illixr_plugin_obj->pose_file << milliseconds << '\t'
-				<< pose.position.x() << " " << pose.position.y() << " " << pose.position.z() << " " 
+				<< pose.position.x() << " " << pose.position.y() << " " << pose.position.z() << " "
 				<< pose.orientation.x() << " " << pose.orientation.y() << " " << pose.orientation.z() << " " << pose.orientation.w() << '\n';
 			illixr_plugin_obj->pose_file.flush();
 		}
