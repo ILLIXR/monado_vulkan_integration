@@ -26,8 +26,7 @@
 #include "illixr/plugin.hpp"
 #include "illixr/phonebook.hpp"
 #include "illixr/switchboard.hpp"
-#include "illixr/data_format.hpp"
-#include "illixr/pose_prediction.hpp"
+#include "illixr/data_format/pose_prediction.hpp"
 #include "illixr/vk/render_pass.hpp"
 #include "illixr/vk/display_provider.hpp"
 #include "illixr/vk/vulkan_objects.hpp"
@@ -39,6 +38,7 @@
 #include <string>
 
 using namespace ILLIXR;
+using namespace ILLIXR::data_format;
 using namespace ILLIXR::vulkan;
 
 const std::string PREFIX = "\e[0;32m[Monado ILLIXR]\e[0m ";
