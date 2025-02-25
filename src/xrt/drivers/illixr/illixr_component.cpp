@@ -17,7 +17,6 @@
 #include "illixr/plugin.hpp"
 #include "illixr/phonebook.hpp"
 #include "illixr/switchboard.hpp"
-#include "illixr/data_format.hpp"
 #include "illixr/pose_prediction.hpp"
 #include "illixr/vk_util/render_pass.hpp"
 #include "illixr/vk_util/display_sink.hpp"
@@ -34,11 +33,11 @@ class monado_vulkan_display_sink : public display_sink {
 class illixr_plugin : public plugin
 {
 public:
-	illixr_plugin(std::string name_, phonebook *pb_)
+	illixr_plugin(const std::string& name_, phonebook *pb_)
 	    : plugin{name_, pb_}
-		, sb{pb->lookup_impl<switchboard>()}
-		, sb_pose{pb->lookup_impl<pose_prediction>()}
-		, sb_clock{pb->lookup_impl<RelativeClock>()}
+		, sb{phonebook_->lookup_impl<switchboard>()}
+		, sb_pose{phonebook_->lookup_impl<pose_prediction>()}
+		, sb_clock{phonebook_->lookup_impl<relative_clock>()}
 		, ds{std::make_shared<monado_vulkan_display_sink>()}
 		, _m_vsync{sb->get_writer<switchboard::event_wrapper<time_point>>("vsync_estimate")}
 	{
@@ -48,7 +47,7 @@ public:
 
 	const std::shared_ptr<switchboard> sb;
 	const std::shared_ptr<pose_prediction> sb_pose;
-	const std::shared_ptr<RelativeClock> sb_clock;
+	const std::shared_ptr<relative_clock> sb_clock;
 	std::shared_ptr<timewarp> sb_timewarp;
 
 	std::shared_ptr<display_sink> ds;
@@ -60,9 +59,9 @@ public:
 static illixr_plugin *illixr_plugin_obj = nullptr;
 
 extern "C" plugin *
-illixr_monado_create_plugin(phonebook *pb)
+illixr_monado_create_plugin(phonebook *phonebook_)
 {
-	illixr_plugin_obj = new illixr_plugin{"illixr_plugin", pb};
+	illixr_plugin_obj = new illixr_plugin{"illixr_plugin", phonebook_};
 	illixr_plugin_obj->start();
 	return illixr_plugin_obj;
 }
@@ -119,7 +118,7 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 
-	pose_type pose {time_point{}, 
+	pose_type pose {time_point{},
 					Eigen::Vector3f {(l_pose.position.x + r_pose.position.x) / 2, (l_pose.position.y + r_pose.position.y) / 2, (l_pose.position.z + r_pose.position.z) / 2},
 					Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
 					};
@@ -135,5 +134,5 @@ extern "C" void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, i
 extern "C" void illixr_publish_vsync_estimate(uint64_t display_time_ns) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 	auto relative_time = time_point{time_point{std::chrono::nanoseconds(display_time_ns)} - illixr_plugin_obj->sb_clock->start_time()};
-	illixr_plugin_obj->_m_vsync.put(illixr_plugin_obj->_m_vsync.allocate<switchboard::event_wrapper<time_point>>(relative_time));
+	illixr_plugin_obj->_m_vsync.put(illixr_plugin_obj->_m_vsync.allocate(relative_time));
 }
