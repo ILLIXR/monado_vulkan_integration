@@ -26,7 +26,6 @@
 #include "illixr/plugin.hpp"
 #include "illixr/phonebook.hpp"
 #include "illixr/switchboard.hpp"
-#include "illixr/data_format.hpp"
 #include "illixr/pose_prediction.hpp"
 #include "illixr/vk/render_pass.hpp"
 #include "illixr/vk/display_provider.hpp"
@@ -57,12 +56,12 @@ static std::atomic<bool> _ds_ready = false;
 class illixr_plugin : public plugin
 {
 public:
-	illixr_plugin(std::string name_, phonebook *pb_)
+	illixr_plugin(const std::string& name_, phonebook *pb_)
 	    : plugin{name_, pb_}
-		, pb{pb_}
-		, sb{pb->lookup_impl<switchboard>()}
-		, sb_pose{pb->lookup_impl<pose_prediction>()}
-		, sb_clock{pb->lookup_impl<RelativeClock>()}
+		, sb{phonebook_->lookup_impl<switchboard>()}
+		, sb_pose{phonebook_->lookup_impl<pose_prediction>()}
+		, sb_clock{phonebook_->lookup_impl<relative_clock>()}
+		, ds{std::make_shared<monado_vulkan_display_sink>()}
 		, _m_vsync{sb->get_writer<switchboard::event_wrapper<time_point>>("vsync_estimate")}
 	{
 		sb_timewarp = pb_->lookup_impl<timewarp>();
@@ -100,7 +99,7 @@ public:
 	phonebook *pb;
 	const std::shared_ptr<switchboard> sb;
 	const std::shared_ptr<pose_prediction> sb_pose;
-	const std::shared_ptr<RelativeClock> sb_clock;
+	const std::shared_ptr<relative_clock> sb_clock;
 	std::shared_ptr<timewarp> sb_timewarp;
 	std::shared_ptr<vulkan::buffer_pool<fast_pose_type>> buffer_pool;
 
@@ -122,9 +121,9 @@ public:
 static illixr_plugin *illixr_plugin_obj = nullptr;
 
 extern "C" plugin *
-illixr_monado_create_plugin(phonebook *pb)
+illixr_monado_create_plugin(phonebook *phonebook_)
 {
-	illixr_plugin_obj = new illixr_plugin{"illixr_plugin", pb};
+	illixr_plugin_obj = new illixr_plugin{"illixr_plugin", phonebook_};
 	illixr_plugin_obj->start();
 	return illixr_plugin_obj;
 }
@@ -345,6 +344,6 @@ extern "C" void illixr_publish_vsync_estimate(uint64_t display_time_ns) {
 
 	if (!illixr_plugin_obj->offload_frames) {
 		auto relative_time = time_point{time_point{std::chrono::nanoseconds(display_time_ns)} - illixr_plugin_obj->sb_clock->start_time()};
-		illixr_plugin_obj->_m_vsync.put(illixr_plugin_obj->_m_vsync.allocate<switchboard::event_wrapper<time_point>>(relative_time));
+	  illixr_plugin_obj->_m_vsync.put(illixr_plugin_obj->_m_vsync.allocate(relative_time));
 	}
 }
