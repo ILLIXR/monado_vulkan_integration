@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <math.h>
 
+#include "../drivers/illixr/illixr_component.h"
 
 struct comp_layer_vertex
 {
@@ -30,8 +31,6 @@ static const VkClearColorValue background_color_active = {
     .float32 = {0.0f, 0.0f, 0.0f, 1.0f},
 };
 
-
-
 static bool
 _init_render_pass(struct vk_bundle *vk,
                   VkFormat format,
@@ -39,40 +38,94 @@ _init_render_pass(struct vk_bundle *vk,
                   VkSampleCountFlagBits sample_count,
                   VkRenderPass *out_render_pass)
 {
-	VkAttachmentDescription *attachments = (VkAttachmentDescription[]){
-	    {
-	        .format = format,
-	        .samples = sample_count,
-	        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-	        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-	        .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-	        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-	        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-	        .finalLayout = final_layout,
-	        .flags = 0,
-	    },
+	VkAttachmentDescription image_attachment = {
+		.format = format,
+		.samples = sample_count,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.finalLayout = final_layout,
+		.flags = 0,
 	};
+
+	VkAttachmentDescription depth_image_attachment = {
+		.format = format,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.finalLayout = final_layout,
+		.flags = 0,
+	};
+
+	VkAttachmentDescription depth_attachment = {
+		.format = VK_FORMAT_D32_SFLOAT,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.finalLayout = final_layout,
+		.flags = 0,
+	};
+
+	VkAttachmentDescription attachments[3] = {image_attachment, depth_image_attachment, depth_attachment};
+
+	VkSubpassDependency dependencies[2];
+
+	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[0].dstSubpass = 0;
+	dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	dependencies[1].srcSubpass = 0;
+	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	VkAttachmentReference image_reference = {
+		.attachment = 0,
+		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	};
+
+	VkAttachmentReference depth_image_reference = {
+		.attachment = 1,
+		.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	};
+
+	VkAttachmentReference color_references[2] = {image_reference, depth_image_reference};
 
 	VkRenderPassCreateInfo renderpass_info = {
 	    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
 	    .flags = 0,
-	    .attachmentCount = 1,
+	    .attachmentCount = 3,
 	    .pAttachments = attachments,
 	    .subpassCount = 1,
 	    .pSubpasses =
 	        &(VkSubpassDescription){
 	            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-	            .colorAttachmentCount = 1,
-	            .pColorAttachments =
-	                &(VkAttachmentReference){
-	                    .attachment = 0,
-	                    .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-	                },
-	            .pDepthStencilAttachment = NULL,
+	            .colorAttachmentCount = 2,
+	            .pColorAttachments =  color_references,
+	            .pDepthStencilAttachment = 
+					&(VkAttachmentReference){
+						.attachment = 2,
+						.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+					},
 	            .pResolveAttachments = NULL,
 	        },
-	    .dependencyCount = 0,
-	    .pDependencies = NULL,
+	    .dependencyCount = 2,
+	    .pDependencies = dependencies,
 	};
 
 	VkResult res = vk->vkCreateRenderPass(vk->device, &renderpass_info, NULL, out_render_pass);
@@ -114,6 +167,32 @@ _init_descriptor_layout(struct comp_layer_renderer *self)
 }
 
 static bool
+_init_depth_descriptor_layout(struct comp_layer_renderer *self)
+{
+	struct vk_bundle *vk = self->vk;
+
+	VkDescriptorSetLayoutCreateInfo info = {
+	    .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+	    .bindingCount = 1,
+	    .pBindings =
+	        (VkDescriptorSetLayoutBinding[]){
+				{
+					.binding = 0,
+	                .descriptorCount = 1,
+	                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+	                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+				}
+	        },
+	};
+
+	VkResult res = vk->vkCreateDescriptorSetLayout(vk->device, &info, NULL, &self->descriptor_depth_set_layout);
+
+	vk_check_error("vkCreateDescriptorSetLayout", res, false);
+
+	return true;
+}
+
+static bool
 _init_descriptor_layout_equirect(struct comp_layer_renderer *self)
 {
 	struct vk_bundle *vk = self->vk;
@@ -144,12 +223,13 @@ _init_pipeline_layout(struct comp_layer_renderer *self)
 {
 	struct vk_bundle *vk = self->vk;
 
-	const VkDescriptorSetLayout set_layouts[2] = {self->descriptor_set_layout,
+	const VkDescriptorSetLayout set_layouts[3] = {self->descriptor_set_layout,
+												  self->descriptor_depth_set_layout,
 	                                              self->descriptor_set_layout_equirect};
 
 	VkPipelineLayoutCreateInfo info = {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-	    .setLayoutCount = 2,
+	    .setLayoutCount = 3,
 	    .pSetLayouts = set_layouts,
 	};
 
@@ -255,6 +335,31 @@ _init_graphics_pipeline(struct comp_layer_renderer *self,
 	    },
 	};
 
+	VkPipelineColorBlendAttachmentState blend_attachments[2] = {
+		{
+			.blendEnable = VK_TRUE,
+			.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+					  VK_COLOR_COMPONENT_A_BIT,
+			.srcColorBlendFactor = blend_factor,
+			.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.colorBlendOp = VK_BLEND_OP_ADD,
+			.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+			.alphaBlendOp = VK_BLEND_OP_ADD,
+		},
+		{
+			.blendEnable = VK_TRUE,
+			.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+					VK_COLOR_COMPONENT_A_BIT,
+			.srcColorBlendFactor = blend_factor,
+			.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.colorBlendOp = VK_BLEND_OP_ADD,
+			.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+			.alphaBlendOp = VK_BLEND_OP_ADD,
+		}
+    };
+
 	VkGraphicsPipelineCreateInfo pipeline_info = {
 	    .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 	    .layout = self->pipeline_layout,
@@ -297,9 +402,168 @@ _init_graphics_pipeline(struct comp_layer_renderer *self,
 	        &(VkPipelineColorBlendStateCreateInfo){
 	            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
 	            .logicOpEnable = VK_FALSE,
-	            .attachmentCount = 1,
+	            .attachmentCount = 2,
 	            .blendConstants = {0, 0, 0, 0},
-	            .pAttachments = config.blend_attachments,
+	            .pAttachments = blend_attachments,
+	        },
+	    .stageCount = 2,
+	    .pStages = shader_stages,
+	    .renderPass = self->render_pass,
+	    .pDynamicState =
+	        &(VkPipelineDynamicStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+	            .dynamicStateCount = 2,
+	            .pDynamicStates =
+	                (VkDynamicState[]){
+	                    VK_DYNAMIC_STATE_VIEWPORT,
+	                    VK_DYNAMIC_STATE_SCISSOR,
+	                },
+	        },
+	    .subpass = 0,
+	};
+
+	VkResult res;
+	res = vk->vkCreateGraphicsPipelines(vk->device, self->pipeline_cache, 1, &pipeline_info, NULL, pipeline);
+
+	vk_check_error("vkCreateGraphicsPipelines", res, false);
+
+	return true;
+}
+
+static bool
+_init_graphics_pipeline_depth(struct comp_layer_renderer *self,
+                        VkShaderModule shader_vert,
+                        VkShaderModule shader_frag,
+                        bool premultiplied_alpha,
+                        VkPipeline *pipeline)
+{
+	struct vk_bundle *vk = self->vk;
+
+	VkBlendFactor blend_factor = premultiplied_alpha ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
+
+	struct comp_pipeline_config config = {
+	    .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+	    .stride = sizeof(struct comp_layer_vertex),
+	    .attribs =
+	        (VkVertexInputAttributeDescription[]){
+	            {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0},
+	            {1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(struct comp_layer_vertex, uv)},
+	        },
+	    .attrib_count = 2,
+	    .depth_stencil_state =
+	        &(VkPipelineDepthStencilStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+	            .depthTestEnable = VK_TRUE,
+	            .depthWriteEnable = VK_TRUE,
+	            .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
+	        },
+	    .blend_attachments =
+	        &(VkPipelineColorBlendAttachmentState){
+	            .blendEnable = VK_TRUE,
+	            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+	                              VK_COLOR_COMPONENT_A_BIT,
+	            .srcColorBlendFactor = blend_factor,
+	            .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+	            .colorBlendOp = VK_BLEND_OP_ADD,
+	            .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+	            .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+	            .alphaBlendOp = VK_BLEND_OP_ADD,
+	        },
+	    .rasterization_state =
+	        &(VkPipelineRasterizationStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+	            .polygonMode = VK_POLYGON_MODE_FILL,
+	            .cullMode = VK_CULL_MODE_BACK_BIT,
+	            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+	            .lineWidth = 1.0f,
+	        },
+	};
+
+	VkPipelineColorBlendAttachmentState blend_attachments[2] = {
+		{
+			.blendEnable = VK_TRUE,
+			.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+					  VK_COLOR_COMPONENT_A_BIT,
+			.srcColorBlendFactor = blend_factor,
+			.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.colorBlendOp = VK_BLEND_OP_ADD,
+			.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+			.alphaBlendOp = VK_BLEND_OP_ADD,
+		},
+		{
+			.blendEnable = VK_TRUE,
+			.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT |
+					VK_COLOR_COMPONENT_A_BIT,
+			.srcColorBlendFactor = blend_factor,
+			.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.colorBlendOp = VK_BLEND_OP_ADD,
+			.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+			.alphaBlendOp = VK_BLEND_OP_ADD,
+		}
+    };
+
+	VkPipelineShaderStageCreateInfo shader_stages[2] = {
+	    {
+	        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+	        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+	        .module = shader_vert,
+	        .pName = "main",
+	    },
+	    {
+	        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+	        .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+	        .module = shader_frag,
+	        .pName = "main",
+	    },
+	};
+
+	VkGraphicsPipelineCreateInfo pipeline_info = {
+	    .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+	    .layout = self->pipeline_layout,
+	    .pVertexInputState =
+	        &(VkPipelineVertexInputStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+	            .pVertexAttributeDescriptions = config.attribs,
+	            .vertexBindingDescriptionCount = 1,
+	            .pVertexBindingDescriptions =
+	                &(VkVertexInputBindingDescription){
+	                    .binding = 0,
+	                    .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+	                    .stride = config.stride,
+	                },
+	            .vertexAttributeDescriptionCount = config.attrib_count,
+	        },
+	    .pInputAssemblyState =
+	        &(VkPipelineInputAssemblyStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+	            .topology = config.topology,
+	            .primitiveRestartEnable = VK_FALSE,
+	        },
+	    .pViewportState =
+	        &(VkPipelineViewportStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+	            .viewportCount = 1,
+	            .scissorCount = 1,
+	        },
+	    .pRasterizationState = config.rasterization_state,
+	    .pMultisampleState =
+	        &(VkPipelineMultisampleStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+	            .rasterizationSamples = self->sample_count,
+	            .minSampleShading = 0.0f,
+	            .pSampleMask = &(uint32_t){0xFFFFFFFF},
+	            .alphaToCoverageEnable = VK_FALSE,
+	        },
+	    .pDepthStencilState = config.depth_stencil_state,
+	    .pColorBlendState =
+	        &(VkPipelineColorBlendStateCreateInfo){
+	            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+	            .logicOpEnable = VK_FALSE,
+	            .attachmentCount = 2,
+	            .blendConstants = {0, 0, 0, 0},
+	            .pAttachments = blend_attachments,
 	        },
 	    .stageCount = 2,
 	    .pStages = shader_stages,
@@ -328,12 +592,12 @@ _init_graphics_pipeline(struct comp_layer_renderer *self,
 // clang-format off
 #define PLANE_VERTICES 6
 static float plane_vertices[PLANE_VERTICES * 5] = {
-	-0.5, -0.5, 0, 0, 1,
-	 0.5, -0.5, 0, 1, 1,
-	 0.5,  0.5, 0, 1, 0,
-	 0.5,  0.5, 0, 1, 0,
-	-0.5,  0.5, 0, 0, 0,
-	-0.5, -0.5, 0, 0, 1,
+	-0.5, -0.5, 1, 0, 1,
+	 0.5, -0.5, 1, 1, 1,
+	 0.5,  0.5, 1, 1, 0,
+	 0.5,  0.5, 1, 1, 0,
+	-0.5,  0.5, 1, 0, 0,
+	-0.5, -0.5, 1, 0, 1,
 };
 
 // clang-format on
@@ -397,6 +661,12 @@ _render_eye(struct comp_layer_renderer *self,
 			comp_layer_draw(self->layers[i], eye, pipeline, pipeline_layout, cmd_buffer, vertex_buffer,
 			                &vp_inv, &vp_inv);
 #endif
+#if defined(XRT_FEATURE_OPENXR_LAYER_DEPTH)
+		} else if (self->layers[i]->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
+			pipeline = self->pipeline_depth;
+			comp_layer_draw(self->layers[i], eye, pipeline, pipeline_layout, cmd_buffer, vertex_buffer,
+			                &vp_inv, &vp_inv);
+#endif
 		} else {
 			comp_layer_draw(self->layers[i], eye, pipeline, pipeline_layout, cmd_buffer, vertex_buffer,
 			                &vp_world, &vp_eye);
@@ -414,9 +684,14 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 	    VK_IMAGE_USAGE_SAMPLED_BIT |          //
 	    VK_IMAGE_USAGE_TRANSFER_SRC_BIT;      //
 
-	VkResult res = vk_create_image_simple(vk, self->extent, format, usage, &self->framebuffers[eye].memory,
-	                                      &self->framebuffers[eye].image);
-	vk_check_error("vk_create_image_simple", res, false);
+	// Color image for encoding
+	VkResult res = vk_create_image_exported(vk, self->extent, format, usage,
+		&self->framebuffers[eye].memory,
+		&self->framebuffers[eye].image_size,
+		&self->framebuffers[eye].image_offset,
+	    &self->framebuffers[eye].image);
+	self->framebuffers[eye].image_extent = self->extent;
+	vk_check_error("vk_create_image_exported", res, false);
 
 	VkImageSubresourceRange subresource_range = {
 	    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -431,11 +706,57 @@ _init_frame_buffer(struct comp_layer_renderer *self, VkFormat format, VkRenderPa
 
 	vk_check_error("vk_create_view", res, false);
 
+	// Depth image for encoding
+	res = vk_create_image_exported(vk, self->extent, format, usage,
+		&self->framebuffers[eye].depth_memory,
+		&self->framebuffers[eye].depth_size,
+		&self->framebuffers[eye].depth_offset,
+	    &self->framebuffers[eye].depth_image);
+	self->framebuffers[eye].depth_extent = self->extent;
+	vk_check_error("vk_create_image_exported", res, false);
+
+
+	res = vk_create_view(vk, self->framebuffers[eye].depth_image, VK_IMAGE_VIEW_TYPE_2D, format, subresource_range,
+	                     &self->framebuffers[eye].depth_view);
+
+	vk_check_error("vk_create_view", res, false);
+
+	// Actual depth image for the depth attachment
+	VkFormat depth_format = VK_FORMAT_D32_SFLOAT;
+
+	VkImageUsageFlags depth_usage =                   //
+	    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | //
+	    VK_IMAGE_USAGE_SAMPLED_BIT;
+
+	res = vk_create_image_exported(vk, self->extent, depth_format, depth_usage,
+		&self->framebuffers[eye].depth_attachment_memory,
+		&self->framebuffers[eye].depth_attachment_size,
+		&self->framebuffers[eye].depth_attachment_offset,
+	    &self->framebuffers[eye].depth_attachment_image);
+	self->framebuffers[eye].depth_attachment_extent = self->extent;
+	vk_check_error("vk_create_image_exported", res, false);
+
+	VkImageSubresourceRange depth_range = {
+	    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+	    .baseMipLevel = 0,
+	    .levelCount = 1,
+	    .baseArrayLayer = 0,
+	    .layerCount = 1,
+	};
+
+	res = vk_create_view(vk, self->framebuffers[eye].depth_attachment_image, VK_IMAGE_VIEW_TYPE_2D, depth_format, depth_range,
+	                     &self->framebuffers[eye].depth_attachment_view);
+
+	vk_check_error("vk_create_view", res, false);
+
+
+	VkImageView views[3] = {self->framebuffers[eye].view, self->framebuffers[eye].depth_view, self->framebuffers[eye].depth_attachment_view};
+
 	VkFramebufferCreateInfo framebuffer_info = {
 	    .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
 	    .renderPass = rp,
-	    .attachmentCount = 1,
-	    .pAttachments = (VkImageView[]){self->framebuffers[eye].view},
+	    .attachmentCount = 3,
+	    .pAttachments = views,
 	    .width = self->extent.width,
 	    .height = self->extent.height,
 	    .layers = 1,
@@ -457,7 +778,7 @@ comp_layer_renderer_allocate_layers(struct comp_layer_renderer *self, uint32_t l
 
 	for (uint32_t i = 0; i < self->layer_count; i++) {
 		self->layers[i] =
-		    comp_layer_create(vk, &self->descriptor_set_layout, &self->descriptor_set_layout_equirect);
+		    comp_layer_create(vk, &self->descriptor_set_layout, &self->descriptor_depth_set_layout, &self->descriptor_set_layout_equirect);
 	}
 }
 
@@ -492,6 +813,7 @@ _init(struct comp_layer_renderer *self,
 	// binding indices used in layer.vert, layer.frag
 	self->transformation_ubo_binding = 0;
 	self->texture_binding = 1;
+	self->depth_binding = 0;
 
 	for (uint32_t i = 0; i < 2; i++) {
 		math_matrix_4x4_identity(&self->mat_projection[i]);
@@ -509,11 +831,13 @@ _init(struct comp_layer_renderer *self,
 	                       &self->render_pass))
 		return false;
 
-	for (uint32_t i = 0; i < 2; i++)
+	for (uint32_t i = 0; i < 2 * OFFLOAD_BUFFER_POOL_SIZE; i++)
 		if (!_init_frame_buffer(self, format, self->render_pass, i))
 			return false;
 
 	if (!_init_descriptor_layout(self))
+		return false;
+	if (!_init_depth_descriptor_layout(self))
 		return false;
 	if (!_init_descriptor_layout_equirect(self))
 		return false;
@@ -538,6 +862,12 @@ _init(struct comp_layer_renderer *self,
 	if (!_init_graphics_pipeline(self, s->equirect2_vert, s->equirect2_frag, true, &self->pipeline_equirect2)) {
 		return false;
 	}
+
+#if defined(XRT_FEATURE_OPENXR_LAYER_DEPTH)
+	if (!_init_graphics_pipeline_depth(self, s->depth_vert, s->depth_frag, true, &self->pipeline_depth)) {
+		return false;
+	}
+#endif
 
 #if defined(XRT_FEATURE_OPENXR_LAYER_CUBE)
 	if (!_init_graphics_pipeline(self, s->cube_vert, s->cube_frag, true, &self->pipeline_cube)) {
@@ -567,6 +897,7 @@ _render_pass_begin(struct vk_bundle *vk,
                    VkFramebuffer frame_buffer,
                    VkCommandBuffer cmd_buffer)
 {
+	// printf("Render pass beginning\n");
 	VkRenderPassBeginInfo render_pass_info = {
 	    .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
 	    .renderPass = render_pass,
@@ -580,18 +911,20 @@ _render_pass_begin(struct vk_bundle *vk,
 	                },
 	            .extent = extent,
 	        },
-	    .clearValueCount = 1,
+	    .clearValueCount = 3,
 	    .pClearValues =
 	        (VkClearValue[]){
 	            {
 	                .color = clear_color,
 	            },
+				{
+	                .color = clear_color,
+	            },
 	            {
-	                .depthStencil =
-	                    {
-	                        .depth = 1.0f,
-	                        .stencil = 0,
-	                    },
+	                .depthStencil = {
+						.depth = 1.0f,
+						.stencil = 0,
+					}
 	            },
 	        },
 	};
@@ -603,7 +936,7 @@ static void
 _render_stereo(struct comp_layer_renderer *self,
                struct vk_bundle *vk,
                VkCommandBuffer cmd_buffer,
-               const VkClearColorValue *color)
+               const VkClearColorValue *color, uint8_t ind)
 {
 	COMP_TRACE_MARKER();
 
@@ -618,7 +951,7 @@ _render_stereo(struct comp_layer_renderer *self,
 	vk->vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
 
 	for (uint32_t eye = 0; eye < 2; eye++) {
-		_render_pass_begin(vk, self->render_pass, self->extent, *color, self->framebuffers[eye].handle,
+		_render_pass_begin(vk, self->render_pass, self->extent, *color, self->framebuffers[ind * 2 + eye].handle,
 		                   cmd_buffer);
 
 		_render_eye(self, eye, cmd_buffer, self->pipeline_layout);
@@ -628,10 +961,11 @@ _render_stereo(struct comp_layer_renderer *self,
 }
 
 void
-comp_layer_renderer_draw(struct comp_layer_renderer *self)
+comp_layer_renderer_draw(struct comp_layer_renderer *self, int8_t ind)
 {
 	COMP_TRACE_MARKER();
 	VkResult ret;
+	// printf("Comp layer renderer draw beginning\n");
 
 	struct vk_bundle *vk = self->vk;
 	struct vk_cmd_pool *pool = &self->pool;
@@ -647,13 +981,32 @@ comp_layer_renderer_draw(struct comp_layer_renderer *self)
 	}
 
 	if (self->layer_count == 0) {
-		_render_stereo(self, vk, cmd_buffer, &background_color_idle);
+		_render_stereo(self, vk, cmd_buffer, &background_color_idle, ind);
 	} else {
-		_render_stereo(self, vk, cmd_buffer, &background_color_active);
+		_render_stereo(self, vk, cmd_buffer, &background_color_active, ind);
 	}
 
 	// Done writing commands, submit to queue, waits for command to finish.
 	ret = vk_cmd_pool_end_submit_wait_and_free_cmd_buffer_locked(vk, pool, cmd_buffer);
+
+	if (illixr_offload_frames()) {
+		struct comp_render_layer *layer;
+		for (int i = 0; i < self->layer_count; i++) {
+			layer = self->layers[i];
+			if (layer->type == XRT_LAYER_STEREO_PROJECTION || layer->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
+				break;
+			}
+		}
+
+		if (layer) {
+			illixr_src_release(ind, layer->l_pose, layer->r_pose);
+		} else {
+			struct xrt_pose l_pose = {0};
+			struct xrt_pose r_pose = {0};
+			illixr_src_release(ind, l_pose, r_pose);
+			printf("WARNING: no projection layer found\n");
+		}
+	}
 
 	// Done submitting commands.
 	vk_cmd_pool_unlock(pool);
@@ -669,6 +1022,9 @@ _destroy_framebuffer(struct comp_layer_renderer *self, uint32_t i)
 	vk->vkDestroyImageView(vk->device, self->framebuffers[i].view, NULL);
 	vk->vkDestroyImage(vk->device, self->framebuffers[i].image, NULL);
 	vk->vkFreeMemory(vk->device, self->framebuffers[i].memory, NULL);
+	vk->vkDestroyImageView(vk->device, self->framebuffers[i].depth_view, NULL);
+	vk->vkDestroyImage(vk->device, self->framebuffers[i].depth_image, NULL);
+	vk->vkFreeMemory(vk->device, self->framebuffers[i].depth_memory, NULL);
 	vk->vkDestroyFramebuffer(vk->device, self->framebuffers[i].handle, NULL);
 }
 

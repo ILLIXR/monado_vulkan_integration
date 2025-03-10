@@ -176,6 +176,34 @@ _update_descriptor(struct comp_render_layer *self,
 	vk->vkUpdateDescriptorSets(vk->device, 2, sets, 0, NULL);
 }
 
+static void
+_update_depth_descriptor(struct comp_render_layer *self,
+                   struct vk_bundle *vk,
+                   VkDescriptorSet set,
+                   VkSampler sampler,
+                   VkImageView image_view)
+{
+	VkWriteDescriptorSet *sets = (VkWriteDescriptorSet[]){
+	    {
+	        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+	        .dstSet = set,
+	        .dstBinding = 0,
+	        .descriptorCount = 1,
+	        .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+	        .pImageInfo =
+	            &(VkDescriptorImageInfo){
+	                .sampler = sampler,
+	                .imageView = image_view,
+	                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	            },
+	        .pBufferInfo = NULL,
+	        .pTexelBufferView = NULL,
+	    },
+	};
+
+	vk->vkUpdateDescriptorSets(vk->device, 1, sets, 0, NULL);
+}
+
 #if defined(XRT_FEATURE_OPENXR_LAYER_EQUIRECT1) || defined(XRT_FEATURE_OPENXR_LAYER_EQUIRECT2)
 static void
 _update_descriptor_equirect(struct comp_render_layer *self, VkDescriptorSet set, VkBuffer buffer)
@@ -260,10 +288,36 @@ comp_layer_update_stereo_descriptors(struct comp_render_layer *self,
 	                   right_image_view);
 }
 
+void
+comp_layer_update_stereo_depth_descriptors(struct comp_render_layer *self,
+										   VkSampler left_sampler,
+										   VkSampler right_sampler,
+										   VkImageView left_image_view,
+										   VkImageView right_image_view,
+										   VkSampler left_depth_sampler,
+										   VkSampler right_depth_sampler,
+										   VkImageView left_depth_view,
+										   VkImageView right_depth_view)
+{
+	struct vk_bundle *vk = self->vk;
+
+	_update_descriptor(self, vk, self->descriptor_sets[0], self->transformation_ubos[0].handle, left_sampler,
+	                   left_image_view);
+
+	_update_descriptor(self, vk, self->descriptor_sets[1], self->transformation_ubos[1].handle, right_sampler,
+	                   right_image_view);
+
+	_update_depth_descriptor(self, vk, self->descriptor_depth_sets[0], left_depth_sampler, left_depth_view);
+
+	_update_depth_descriptor(self, vk, self->descriptor_depth_sets[1], right_depth_sampler, right_depth_view);
+
+}
+
 static bool
 _init(struct comp_render_layer *self,
       struct vk_bundle *vk,
       VkDescriptorSetLayout *layout,
+	  VkDescriptorSetLayout *depth_layout,
       VkDescriptorSetLayout *layout_equirect)
 {
 	self->vk = vk;
@@ -287,21 +341,25 @@ _init(struct comp_render_layer *self,
 
 	VkDescriptorPoolSize pool_sizes[] = {
 	    {
-	        .descriptorCount = 3,
+	        .descriptorCount = 100,
 	        .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 	    },
 	    {
-	        .descriptorCount = 2,
+	        .descriptorCount = 100,
 	        .type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-	    },
+	    }
 	};
 
-	if (!vk_init_descriptor_pool(vk, pool_sizes, ARRAY_SIZE(pool_sizes), 3, &self->descriptor_pool))
+	if (!vk_init_descriptor_pool(vk, pool_sizes, ARRAY_SIZE(pool_sizes), 5, &self->descriptor_pool))
 		return false;
 
-	for (uint32_t eye = 0; eye < 2; eye++)
+	for (uint32_t eye = 0; eye < 2; eye++) {
 		if (!vk_allocate_descriptor_sets(vk, self->descriptor_pool, 1, layout, &self->descriptor_sets[eye]))
 			return false;
+
+		if (!vk_allocate_descriptor_sets(vk, self->descriptor_pool, 1, depth_layout, &self->descriptor_depth_sets[eye]))
+			return false;
+	}
 
 #if defined(XRT_FEATURE_OPENXR_LAYER_EQUIRECT1) || defined(XRT_FEATURE_OPENXR_LAYER_EQUIRECT2)
 	if (!vk_allocate_descriptor_sets(vk, self->descriptor_pool, 1, layout_equirect, &self->descriptor_equirect))
@@ -336,15 +394,13 @@ comp_layer_draw(struct comp_render_layer *self,
 	const struct xrt_matrix_4x4 *vp = self->view_space ? vp_eye : vp_world;
 
 	switch (self->type) {
-	case XRT_LAYER_STEREO_PROJECTION: _update_mvp_matrix(self, eye, &proj_scale); break;
+	case XRT_LAYER_STEREO_PROJECTION:
+	case XRT_LAYER_STEREO_PROJECTION_DEPTH: _update_mvp_matrix(self, eye, &proj_scale); break;
 	case XRT_LAYER_QUAD:
 	case XRT_LAYER_CYLINDER:
 	case XRT_LAYER_EQUIRECT1:
 	case XRT_LAYER_EQUIRECT2:
 	case XRT_LAYER_CUBE: _update_mvp_matrix(self, eye, vp); break;
-	case XRT_LAYER_STEREO_PROJECTION_DEPTH:
-		// Should never end up here.
-		assert(false);
 	}
 
 
@@ -357,6 +413,15 @@ comp_layer_draw(struct comp_render_layer *self,
 		vk->vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 2, sets, 0,
 		                            NULL);
 
+	} else if (self->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
+		const VkDescriptorSet sets[3] = {
+		    self->descriptor_sets[eye],
+			self->descriptor_depth_sets[eye],
+		    self->descriptor_equirect,
+		};
+
+		vk->vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 3, sets, 0,
+		                            NULL);
 	} else {
 		vk->vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1,
 		                            &self->descriptor_sets[eye], 0, NULL);
@@ -493,11 +558,11 @@ comp_layer_get_cylinder_vertex_buffer(struct comp_render_layer *self)
 }
 
 struct comp_render_layer *
-comp_layer_create(struct vk_bundle *vk, VkDescriptorSetLayout *layout, VkDescriptorSetLayout *layout_equirect)
+comp_layer_create(struct vk_bundle *vk, VkDescriptorSetLayout *layout, VkDescriptorSetLayout *depth_layout, VkDescriptorSetLayout *layout_equirect)
 {
 	struct comp_render_layer *q = U_TYPED_CALLOC(struct comp_render_layer);
 
-	_init(q, vk, layout, layout_equirect);
+	_init(q, vk, layout, depth_layout, layout_equirect);
 
 	if (!_init_cylinder_vertex_buffer(q)) {
 		return NULL;

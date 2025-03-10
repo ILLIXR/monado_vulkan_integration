@@ -30,6 +30,7 @@
 #include "illixr_component.h"
 #include "illixr/dynamic_lib.hpp"
 #include "illixr/runtime.hpp"
+#include "illixr/global_module_defs.hpp"
 
 /*
  *
@@ -155,6 +156,22 @@ split(const std::string &s, char delimiter)
 	return tokens;
 }
 
+uint32_t get_server_width() {
+	if (std::getenv("ILLIXR_SERVER_WIDTH") == nullptr) {
+		throw std::runtime_error("ILLIXR_SERVER_WIDTH not defined!");
+	}
+	
+	return std::stoi(std::getenv("ILLIXR_SERVER_WIDTH"));
+}
+
+uint32_t get_server_height() {
+	if (std::getenv("ILLIXR_SERVER_HEIGHT") == nullptr) {
+		throw std::runtime_error("ILLIXR_SERVER_HEIGHT not defined!");
+	}
+	
+	return std::stoi(std::getenv("ILLIXR_SERVER_HEIGHT"));
+}
+
 static int
 illixr_rt_launch(struct illixr_hmd *dh, const char *path, const char *comp)
 {
@@ -180,6 +197,13 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 	dh->base.name = XRT_DEVICE_GENERIC_HMD;
 	dh->base.device_type = XRT_DEVICE_TYPE_HMD;
 
+	// Read framerate from environment variable
+	if (std::getenv("ILLIXR_OFFLOAD_RENDERING_FRAMERATE") != nullptr) {
+		dh->base.hmd->screens[0].nominal_frame_interval_ns = 1000000000 / std::stoi(std::getenv("ILLIXR_OFFLOAD_RENDERING_FRAMERATE"));
+	} else {
+		dh->base.hmd->screens[0].nominal_frame_interval_ns = 1000000000 / 90;
+	}
+
 	size_t idx = 0;
 	dh->base.hmd->blend_modes[idx++] = XRT_BLEND_MODE_OPAQUE;
 	dh->base.hmd->blend_mode_count = idx;
@@ -199,9 +223,9 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 
 	// Setup info.
 	struct u_device_simple_info info;
-	info.display.w_pixels = 2048;
-	info.display.h_pixels = 1024;
-	info.display.w_meters = 0.14f;
+	info.display.w_pixels = 2 * get_server_width();
+	info.display.h_pixels = get_server_height();
+	info.display.w_meters = 0.122f;
 	info.display.h_meters = 0.07f;
 	info.lens_horizontal_separation_meters = 0.13f / 2.0f;
 	info.lens_vertical_position_meters = 0.07f / 2.0f;
@@ -212,6 +236,34 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 		DH_ERROR(dh, "Failed to setup basic device info");
 		illixr_hmd_destroy(&dh->base);
 		return NULL;
+	}
+
+	// Read ILLIXR_OVERSCAN from environment variable
+	float scale = 1.0f;
+	if (std::getenv("ILLIXR_OVERSCAN") != nullptr) {
+		scale = std::stof(std::getenv("ILLIXR_OVERSCAN"));
+	}
+
+
+	// The server may render at a different FOV than the client.
+	for (int eye = 0; eye < 2; eye++) {
+		float tan_left = ILLIXR::server_params::fov_left[eye];
+		float tan_right = ILLIXR::server_params::fov_right[eye];
+		float tan_up = ILLIXR::server_params::fov_up[eye];
+		float tan_down = ILLIXR::server_params::fov_down[eye];
+		float fov_left = std::atan(tan_left);
+		float fov_right = std::atan(tan_right);
+		float fov_up = std::atan(tan_up);
+		float fov_down = std::atan(tan_down);
+		tan_left = std::tan(fov_left * scale);
+		tan_right = std::tan(fov_right * scale);
+		tan_up = std::tan(fov_up * scale);
+		tan_down = std::tan(fov_down * scale);
+
+		dh->base.hmd->distortion.fov[eye].angle_left = tan_left;
+		dh->base.hmd->distortion.fov[eye].angle_right = tan_right;
+		dh->base.hmd->distortion.fov[eye].angle_up = tan_up;
+		dh->base.hmd->distortion.fov[eye].angle_down = tan_down;
 	}
 
 	// Setup variable tracker.

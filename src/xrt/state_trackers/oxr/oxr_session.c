@@ -117,6 +117,13 @@ oxr_session_enumerate_formats(struct oxr_logger *log,
 			continue;
 		}
 
+		// Disable the following for Godot:
+		// p_usable_swap_chains.push_back(VK_FORMAT_D24_UNORM_S8_UINT);
+		// p_usable_swap_chains.push_back(VK_FORMAT_D32_SFLOAT_S8_UINT);
+		if (format == VK_FORMAT_D24_UNORM_S8_UINT || format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+			continue;
+		}
+
 		filtered_formats[filtered_count++] = format;
 	}
 

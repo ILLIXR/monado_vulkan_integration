@@ -298,8 +298,15 @@ do_graphics_layers(struct comp_compositor *c)
 			right = &layer->sc_array[1]->images[stereo->r.sub.image_index];
 
 			//! @todo: Make use of stereo->l_d and stereo->r_d
+			struct comp_swapchain_image *right_depth;
+			struct comp_swapchain_image *left_depth;
+			left_depth = &layer->sc_array[2]->images[stereo->l_d.sub.image_index];
+			right_depth = &layer->sc_array[3]->images[stereo->r_d.sub.image_index];
 
-			comp_renderer_set_projection_layer(c->r, i, left, right, data);
+			// printf("Left Image: %d, Left Depth: %d\n", stereo->l.sub.image_index, stereo->l_d.sub.image_index);
+			// printf("Right Image: %d, Right Depth: %d\n", stereo->r.sub.image_index, stereo->r_d.sub.image_index);
+
+			comp_renderer_set_projection_depth_layer(c->r, i, left, right, left_depth, right_depth, data);
 		} break;
 		case XRT_LAYER_CYLINDER: {
 			struct xrt_layer_cylinder_data *cyl = &layer->data.cylinder;
@@ -641,6 +648,15 @@ static const char *optional_device_extensions[] = {
 #ifdef VK_KHR_timeline_semaphore
     VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
 #endif
+// #ifdef VK_KHR_video_queue
+// 	VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
+// #endif
+// #ifdef VK_KHR_video_encode_queue
+// 	VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME,
+// #endif
+// #ifdef VK_EXT_video_encode_h264
+// 	VK_EXT_VIDEO_ENCODE_H264_EXTENSION_NAME,
+// #endif
 #ifdef VK_EXT_calibrated_timestamps
     VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME,
 #endif
@@ -714,7 +730,7 @@ compositor_init_vulkan(struct comp_compositor *c)
 
 	struct comp_vulkan_arguments vk_args = {
 	    .get_instance_proc_address = vkGetInstanceProcAddr,
-	    .required_instance_version = VK_MAKE_VERSION(1, 0, 0),
+	    .required_instance_version = VK_MAKE_VERSION(1, 2, 0),
 	    .required_instance_extensions = required_instance_ext_list,
 	    .optional_instance_extensions = optional_instance_ext_list,
 	    .required_device_extensions = required_device_extension_list,
@@ -728,11 +744,6 @@ compositor_init_vulkan(struct comp_compositor *c)
 
 	struct comp_vulkan_results vk_res = {0};
 	bool bundle_ret = comp_vulkan_init_bundle(vk, &vk_args, &vk_res);
-
-	u_string_list_destroy(&required_instance_ext_list);
-	u_string_list_destroy(&optional_instance_ext_list);
-	u_string_list_destroy(&required_device_extension_list);
-	u_string_list_destroy(&optional_device_extension_list);
 
 	if (!bundle_ret) {
 		return false;
@@ -759,6 +770,14 @@ compositor_init_vulkan(struct comp_compositor *c)
 	if (xret != XRT_SUCCESS) {
 		return false;
 	}
+
+	// illixr_destroy_timewarp();
+	illixr_initialize_vulkan_display_service(vk->instance, vk->physical_device, vk->device, vk->queue, vk->queue_family_index, vk_args.enabled_instance_extensions, vk_args.enabled_device_extensions);
+
+	u_string_list_destroy(&required_instance_ext_list);
+	u_string_list_destroy(&optional_instance_ext_list);
+	u_string_list_destroy(&required_device_extension_list);
+	u_string_list_destroy(&optional_device_extension_list);
 
 	return true;
 }
@@ -975,15 +994,6 @@ compositor_init_swapchain(struct comp_compositor *c)
 	if (comp_target_init_post_vulkan(c->target,                   //
 	                                 c->settings.preferred.width, //
 	                                 c->settings.preferred.height)) {
-										// check whether ILLIXR is present
-		if (strcmp(c->xdev->str, "ILLIXR") != 0) {
-			return true;
-		}
-
-		// populate ILLIXR display service
-		struct vk_bundle* bundle = c->nr.vk;
-		illixr_initialize_vulkan_display_service(bundle->instance, bundle->physical_device, bundle->device, bundle->queue, bundle->queue_family_index);
-
 		return true;
 	}
 

@@ -96,6 +96,9 @@ struct render_shaders
 	VkShaderModule cube_vert;
 	VkShaderModule cube_frag;
 
+	VkShaderModule depth_vert;
+	VkShaderModule depth_frag;
+
 	VkShaderModule layer_vert;
 	VkShaderModule layer_frag;
 };

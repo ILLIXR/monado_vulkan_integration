@@ -36,6 +36,11 @@
 #include "shaders/mesh.frag.h"
 #include "shaders/mesh.vert.h"
 
+#ifdef XRT_FEATURE_OPENXR_LAYER_DEPTH
+#include "shaders/depth.frag.h"
+#include "shaders/depth.vert.h"
+#endif
+
 #ifdef XRT_FEATURE_OPENXR_LAYER_CUBE
 #include "shaders/cube.frag.h"
 #include "shaders/cube.vert.h"
@@ -137,6 +142,17 @@ render_shaders_load(struct render_shaders *s, struct vk_bundle *vk)
 	              sizeof(shaders_equirect2_frag), // size
 	              &s->equirect2_frag));           // out
 
+#ifdef XRT_FEATURE_OPENXR_LAYER_DEPTH
+	C(shader_load(vk,                        // vk_bundle
+	              shaders_depth_vert,         // data
+	              sizeof(shaders_depth_vert), // size
+	              &s->depth_vert));           // out
+	C(shader_load(vk,                        // vk_bundle
+	              shaders_depth_frag,         // data
+	              sizeof(shaders_depth_frag), // size
+	              &s->depth_frag));           // out
+#endif
+
 #ifdef XRT_FEATURE_OPENXR_LAYER_CUBE
 	C(shader_load(vk,                        // vk_bundle
 	              shaders_cube_vert,         // data
@@ -184,6 +200,10 @@ render_shaders_close(struct render_shaders *s, struct vk_bundle *vk)
 #ifdef XRT_FEATURE_OPENXR_LAYER_CUBE
 	D(cube_vert);
 	D(cube_frag);
+#endif
+#ifdef XRT_FEATURE_OPENXR_LAYER_DEPTH
+	D(depth_vert);
+	D(depth_frag);
 #endif
 	D(layer_vert);
 	D(layer_frag);

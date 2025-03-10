@@ -14,7 +14,7 @@ layout (set = 0, binding = 0, std140) uniform Transformation {
 
 layout (set = 0, binding = 1) uniform sampler2D image;
 
-layout (set = 1, binding = 0, std140) uniform Equirect {
+layout (set = 2, binding = 0, std140) uniform Equirect {
 	float radius;
 	float central_horizontal_angle;
 	float upper_vertical_angle;
@@ -23,6 +23,7 @@ layout (set = 1, binding = 0, std140) uniform Equirect {
 
 layout (location = 0)  in vec2 uv;
 layout (location = 0) out vec4 out_color;
+layout (location = 1) out vec4 out_depth;
 
 const float PI = 3.1416;
 
@@ -71,8 +72,10 @@ void main ()
 		out_color += texture(image, vec2(lat, lon)) / 2.0;
 #else
 		out_color = texture(image, vec2(lat, lon));
+		out_depth = vec4(0);
 	} else {
 		out_color = vec4(0, 0, 0, 0);
+		out_depth = vec4(0);
 	}
 #endif
 }

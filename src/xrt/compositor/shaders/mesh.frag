@@ -16,6 +16,7 @@ layout (location = 0)  in vec2 in_ruv;
 layout (location = 1)  in vec2 in_guv;
 layout (location = 2)  in vec2 in_buv;
 layout (location = 0) out vec4 out_color;
+layout (location = 1) out vec4 out_depth;
 
 
 void main()
@@ -25,4 +26,5 @@ void main()
 	float b = texture(tex_sampler, in_buv).z;
 
 	out_color = vec4(r, g, b, 1.0);
+	out_depth = vec4(0);
 }

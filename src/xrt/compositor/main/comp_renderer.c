@@ -229,12 +229,12 @@ renderer_build_rendering(struct comp_renderer *r,
                          struct render_gfx_target_resources *rtr,
                          VkSampler src_samplers[2],
                          VkImageView src_image_views[2],
-                         struct xrt_normalized_rect src_norm_rects[2])
+                         struct xrt_normalized_rect src_norm_rects[2],
+						 uint8_t buffer_ind)
 {
 	COMP_TRACE_MARKER();
 
 	struct comp_compositor *c = r->c;
-
 
 	/*
 	 * Rendering
@@ -267,51 +267,53 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * Update
 	 */
 
-	// struct render_gfx_mesh_ubo_data distortion_data[2] = {
-	//     {
-	//         .vertex_rot = l_v->rot,
-	//         .post_transform = src_norm_rects[0],
-	//     },
-	//     {
-	//         .vertex_rot = r_v->rot,
-	//         .post_transform = src_norm_rects[1],
-	//     },
-	// };
+	if (illixr_offload_frames()) {
+		struct render_gfx_mesh_ubo_data distortion_data[2] = {
+			{
+				.vertex_rot = l_v->rot,
+				.post_transform = src_norm_rects[0],
+			},
+			{
+				.vertex_rot = r_v->rot,
+				.post_transform = src_norm_rects[1],
+			},
+		};
 
-	// const struct xrt_matrix_2x2 rotation_90_cw = {{
-	//     .vecs =
-	//         {
-	//             {0, 1},
-	//             {-1, 0},
-	//         },
-	// }};
+		const struct xrt_matrix_2x2 rotation_90_cw = {{
+			.vecs =
+				{
+					{0, 1},
+					{-1, 0},
+				},
+		}};
 
-	// if (pre_rotate) {
-	// 	m_mat2x2_multiply(&distortion_data[0].vertex_rot,  //
-	// 	                  &rotation_90_cw,                 //
-	// 	                  &distortion_data[0].vertex_rot); //
-	// 	m_mat2x2_multiply(&distortion_data[1].vertex_rot,  //
-	// 	                  &rotation_90_cw,                 //
-	// 	                  &distortion_data[1].vertex_rot); //
-	// }
+		if (pre_rotate) {
+			m_mat2x2_multiply(&distortion_data[0].vertex_rot,  //
+							&rotation_90_cw,                 //
+							&distortion_data[0].vertex_rot); //
+			m_mat2x2_multiply(&distortion_data[1].vertex_rot,  //
+							&rotation_90_cw,                 //
+							&distortion_data[1].vertex_rot); //
+		}
 
-	// render_gfx_update_distortion(rr,                   //
-	//                              0,                    // view_index
-	//                              src_samplers[0],      //
-	//                              src_image_views[0],   //
-	//                              &distortion_data[0]); //
+		render_gfx_update_distortion(rr,                   //
+									0,                    // view_index
+									src_samplers[0],      //
+									src_image_views[0],   //
+									&distortion_data[0]); //
 
-	// render_gfx_update_distortion(rr,                   //
-	//                              1,                    // view_index
-	//                              src_samplers[1],      //
-	//                              src_image_views[1],   //
-	//                              &distortion_data[1]); //
+		render_gfx_update_distortion(rr,                   //
+									1,                    // view_index
+									src_samplers[1],      //
+									src_image_views[1],   //
+									&distortion_data[1]); //
+	}
 
 	// ILLIXR: get pose from projection layer
 	struct comp_render_layer *layer;
 	for (int i = 0; i < r->lr->layer_count; i++) {
 		layer = r->lr->layers[i];
-		if (layer->type == XRT_LAYER_STEREO_PROJECTION) {
+		if (layer->type == XRT_LAYER_STEREO_PROJECTION || layer->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
 			break;
 		}
 	}
@@ -326,10 +328,15 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * Target
 	 */
 
-	render_gfx_begin_target( //
-	    rr,                  //
-	    rtr);                //
+	// OpenWarp is responsible for beginning the render pass and setting the viewport
 
+	if (illixr_offload_frames()) {
+		render_gfx_begin_target( //
+			rr,                  //
+			rtr);                //
+	}
+
+	rr->rtr = rtr;
 
 	/*
 	 * Viewport one
@@ -340,8 +347,11 @@ renderer_build_rendering(struct comp_renderer *r,
 	                      0,                 // view_index
 	                      &l_viewport_data); // viewport_data
 
-	// render_gfx_distortion(rr);
-	illixr_tw_record_command_buffer(rr->r->cmd, 0, 1);
+	if (illixr_offload_frames()) {
+		render_gfx_distortion(rr);
+	}
+
+	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, buffer_ind, 1);
 
 	render_gfx_end_view(rr);
 
@@ -355,8 +365,11 @@ renderer_build_rendering(struct comp_renderer *r,
 	                      1,                 // view_index
 	                      &r_viewport_data); // viewport_data
 
-	// render_gfx_distortion(rr);
-	illixr_tw_record_command_buffer(rr->r->cmd, 0, 0);
+	if (illixr_offload_frames()) {
+		render_gfx_distortion(rr);
+	}
+
+	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, buffer_ind, 0);
 
 	render_gfx_end_view(rr);
 
@@ -365,7 +378,9 @@ renderer_build_rendering(struct comp_renderer *r,
 	 * End
 	 */
 
-	render_gfx_end_target(rr);
+	if (illixr_offload_frames()) {
+		render_gfx_end_target(rr);
+	}
 
 	// Make the command buffer usable.
 	render_gfx_end(rr);
@@ -455,7 +470,7 @@ renderer_create_layer_renderer(struct comp_renderer *r)
 
 	uint32_t layer_count = 0;
 	if (r->lr != NULL) {
-		// if we already had one, re-populate it after recreation.
+		// if we aand then the ready had one, re-populate it after recreation.
 		layer_count = r->lr->layer_count;
 		comp_layer_renderer_destroy(&r->lr);
 	}
@@ -551,12 +566,62 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 
 	assert(r->buffer_count != 0);
 
+	struct vk_bundle* vk = c->nr.vk;
+	VkExtent2D extent = {
+		.width = r->c->target->width,
+		.height = r->c->target->height,
+	};
+	// illixr_initialize_vulkan_display_service(vk->instance, vk->physical_device, vk->device, vk->queue, vk->queue_family_index, extent);
+
 	// Initialize ILLIXR timewarp
 	if (strcmp(r->c->xdev->str, "ILLIXR") == 0) {
-		VkImageView buffers[2];
-		buffers[0] = r->lr->framebuffers[0].view;
-		buffers[1] = r->lr->framebuffers[1].view;
-		illixr_initialize_timewarp(r->lr->render_pass, 0, buffers, 1);
+		// VkImageView buffers[2];
+		// buffers[0] = r->lr->framebuffers[0].view;
+		// buffers[1] = r->lr->framebuffers[1].view;
+		
+		// illixr_initialize_timewarp(r->rtr_array[0].render_pass, 0, buffers, 1);
+
+		// OpenWarp also wants the depth image view
+		// VkImageView buffers[4];
+		// buffers[0] = r->lr->framebuffers[0].view;
+		// buffers[1] = r->lr->framebuffers[0].depth_view;
+		// buffers[2] = r->lr->framebuffers[1].view;
+		// buffers[3] = r->lr->framebuffers[1].depth_view;
+		// illixr_initialize_timewarp(r->rtr_array[0].render_pass, 0, buffers, 2);
+
+
+		// Each pair of images is a color + depth image
+		VkImage images[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
+		VkImageView image_view[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
+		VkDeviceMemory device_memory[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
+		VkDeviceSize size[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
+		VkDeviceSize offset[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
+
+		
+		for (int i = 0; i < 2 * OFFLOAD_BUFFER_POOL_SIZE; i++) {
+			images[2 * i] = r->lr->framebuffers[i].image;
+			image_view[2 * i] = r->lr->framebuffers[i].view;
+			device_memory[2 * i] = r->lr->framebuffers[i].memory;
+			size[2 * i] = r->lr->framebuffers[i].image_size;
+			offset[2 * i] = r->lr->framebuffers[i].image_offset;
+
+			if (illixr_use_lossy_depth()) {
+				images[2 * i + 1] = r->lr->framebuffers[i].depth_image;
+				image_view[2 * i + 1] = r->lr->framebuffers[i].depth_view;
+				device_memory[2 * i + 1] = r->lr->framebuffers[i].depth_memory;
+				size[2 * i + 1] = r->lr->framebuffers[i].depth_size;
+				offset[2 * i + 1] = r->lr->framebuffers[i].depth_offset;
+			} else {
+				images[2 * i + 1] = r->lr->framebuffers[i].depth_attachment_image;
+				image_view[2 * i + 1] = r->lr->framebuffers[i].depth_attachment_view;
+				device_memory[2 * i + 1] = r->lr->framebuffers[i].depth_attachment_memory;
+				size[2 * i + 1] = r->lr->framebuffers[i].depth_attachment_size;
+				offset[2 * i + 1] = r->lr->framebuffers[i].depth_attachment_offset;
+			}
+		}
+
+
+		illixr_initialize_timewarp(r->rtr_array[0].render_pass, 0, r->lr->framebuffers[0].image_extent, images, image_view, device_memory, size, offset, OFFLOAD_BUFFER_POOL_SIZE);
 	}
 
 	return true;
@@ -849,40 +914,60 @@ get_image_view(const struct comp_swapchain_image *image, enum xrt_layer_composit
 /*!
  * @pre render_gfx_init(rr, &c->nr)
  */
-static void
-do_gfx_mesh_and_proj(struct comp_renderer *r,
-                     struct render_gfx *rr,
-                     struct render_gfx_target_resources *rts,
-                     const struct comp_layer *layer,
-                     const struct xrt_layer_projection_view_data *lvd,
-                     const struct xrt_layer_projection_view_data *rvd)
-{
-	const struct xrt_layer_data *data = &layer->data;
-	const uint32_t left_array_index = lvd->sub.array_index;
-	const uint32_t right_array_index = rvd->sub.array_index;
-	const struct comp_swapchain_image *left = &layer->sc_array[0]->images[lvd->sub.image_index];
-	const struct comp_swapchain_image *right = &layer->sc_array[1]->images[rvd->sub.image_index];
+// static void
+// do_gfx_mesh_and_proj(struct comp_renderer *r,
+//                      struct render_gfx *rr,
+//                      struct render_gfx_target_resources *rts,
+//                      const struct comp_layer *layer,
+//                      const struct xrt_layer_projection_view_data *lvd,
+//                      const struct xrt_layer_projection_view_data *rvd)
+// {
+// 	const struct xrt_layer_data *data = &layer->data;
+// 	const uint32_t left_array_index = lvd->sub.array_index;
+// 	const uint32_t right_array_index = rvd->sub.array_index;
+// 	const struct comp_swapchain_image *left = &layer->sc_array[0]->images[lvd->sub.image_index];
+// 	const struct comp_swapchain_image *right = &layer->sc_array[1]->images[rvd->sub.image_index];
 
-	struct xrt_normalized_rect src_norm_rects[2] = {lvd->sub.norm_rect, rvd->sub.norm_rect};
-	if (data->flip_y) {
-		src_norm_rects[0].h = -src_norm_rects[0].h;
-		src_norm_rects[0].y = 1 + src_norm_rects[0].y;
-		src_norm_rects[1].h = -src_norm_rects[1].h;
-		src_norm_rects[1].y = 1 + src_norm_rects[1].y;
+// 	struct xrt_normalized_rect src_norm_rects[2] = {lvd->sub.norm_rect, rvd->sub.norm_rect};
+// 	if (data->flip_y) {
+// 		src_norm_rects[0].h = -src_norm_rects[0].h;
+// 		src_norm_rects[0].y = 1 + src_norm_rects[0].y;
+// 		src_norm_rects[1].h = -src_norm_rects[1].h;
+// 		src_norm_rects[1].y = 1 + src_norm_rects[1].y;
+// 	}
+
+// 	VkSampler clamp_to_border_black = rr->r->samplers.clamp_to_border_black;
+// 	VkSampler src_samplers[2] = {
+// 	    clamp_to_border_black,
+// 	    clamp_to_border_black,
+// 	};
+
+// 	VkImageView src_image_views[2] = {
+// 	    get_image_view(left, data->flags, left_array_index),
+// 	    get_image_view(right, data->flags, right_array_index),
+// 	};
+
+// 	renderer_build_rendering(r, rr, rts, src_samplers, src_image_views, src_norm_rects);
+// }
+
+static void
+release_frame(struct comp_layer_renderer *lr, uint8_t buffer_ind) {
+	struct comp_render_layer *layer;
+	for (int i = 0; i < lr->layer_count; i++) {
+		layer = lr->layers[i];
+		if (layer->type == XRT_LAYER_STEREO_PROJECTION || layer->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
+			break;
+		}
 	}
 
-	VkSampler clamp_to_border_black = rr->r->samplers.clamp_to_border_black;
-	VkSampler src_samplers[2] = {
-	    clamp_to_border_black,
-	    clamp_to_border_black,
-	};
-
-	VkImageView src_image_views[2] = {
-	    get_image_view(left, data->flags, left_array_index),
-	    get_image_view(right, data->flags, right_array_index),
-	};
-
-	renderer_build_rendering(r, rr, rts, src_samplers, src_image_views, src_norm_rects);
+	if (layer) {
+		illixr_src_release(buffer_ind, layer->l_pose, layer->r_pose);
+	} else {
+		struct xrt_pose l_pose = {0};
+		struct xrt_pose r_pose = {0};
+		illixr_src_release(buffer_ind, l_pose, r_pose);
+		printf("WARNING: no projection layer found\n");
+	}
 }
 
 /*!
@@ -908,7 +993,9 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		comp_target_mark_submit(ct, c->frame.rendering.id, os_monotonic_get_ns());
 
 		renderer_get_view_projection(r);
-		comp_layer_renderer_draw(r->lr);
+
+		uint8_t ind = illixr_src_acquire();
+		comp_layer_renderer_draw(r->lr, ind);
 
 		VkSampler clamp_to_border_black = r->c->nr.samplers.clamp_to_border_black;
 		VkSampler src_samplers[2] = {
@@ -916,8 +1003,8 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		    clamp_to_border_black,
 		};
 		VkImageView src_image_views[2] = {
-		    r->lr->framebuffers[0].view,
-		    r->lr->framebuffers[1].view,
+		    r->lr->framebuffers[ind * 2].view,
+		    r->lr->framebuffers[ind * 2 + 1].view,
 		};
 
 		struct xrt_normalized_rect src_norm_rects[2] = {
@@ -925,9 +1012,13 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		    {.x = 0, .y = 0, .w = 1, .h = 1},
 		};
 
-		renderer_build_rendering(r, rr, rtr, src_samplers, src_image_views, src_norm_rects);
-
+		renderer_build_rendering(r, rr, rtr, src_samplers, src_image_views, src_norm_rects, ind);
 		renderer_submit_queue(r, rr->r->cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
+		// If the frame isn't offloaded, the images need to be available until warping is complete.
+		if (!illixr_offload_frames()) {
+			release_frame(r->lr, ind);
+		}
 
 		return;
 	}
@@ -957,7 +1048,7 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		c->base.slot.fovs[0] = lvd->fov;
 		c->base.slot.fovs[1] = rvd->fov;
 
-		do_gfx_mesh_and_proj(r, rr, rtr, layer, lvd, rvd);
+		// do_gfx_mesh_and_proj(r, rr, rtr, layer, lvd, rvd);
 
 		renderer_submit_queue(r, rr->r->cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
@@ -975,7 +1066,7 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		c->base.slot.fovs[0] = lvd->fov;
 		c->base.slot.fovs[1] = rvd->fov;
 
-		do_gfx_mesh_and_proj(r, rr, rtr, layer, lvd, rvd);
+		// do_gfx_mesh_and_proj(r, rr, rtr, layer, lvd, rvd);
 
 		renderer_submit_queue(r, rr->r->cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
@@ -1668,6 +1759,77 @@ comp_renderer_set_projection_layer(struct comp_renderer *r,
 	comp_layer_set_flip_y(l, data->flip_y);
 
 	l->type = XRT_LAYER_STEREO_PROJECTION;
+	l->flags = data->flags;
+	l->view_space = (data->flags & XRT_LAYER_COMPOSITION_VIEW_SPACE_BIT) != 0;
+
+	// ILLIXR: pass render pose to layer renderer
+	l->l_pose = data->stereo.l.pose;
+	l->r_pose = data->stereo.r.pose;
+
+	l->transformation[0].offset = data->stereo.l.sub.rect.offset;
+	l->transformation[0].extent = data->stereo.l.sub.rect.extent;
+	l->transformation[1].offset = data->stereo.r.sub.rect.offset;
+	l->transformation[1].extent = data->stereo.r.sub.rect.extent;
+}
+
+void
+comp_renderer_set_projection_depth_layer(struct comp_renderer *r,
+                                         uint32_t layer,
+                                         struct comp_swapchain_image *left_image,
+                                         struct comp_swapchain_image *right_image,
+                                         struct comp_swapchain_image *left_depth,
+                                         struct comp_swapchain_image *right_depth,
+                                         struct xrt_layer_data *data)
+{
+	uint32_t left_array_index = data->stereo.l.sub.array_index;
+	uint32_t right_array_index = data->stereo.r.sub.array_index;
+
+	uint32_t left_depth_array_index = data->stereo_depth.l_d.sub.array_index;
+	uint32_t right_depth_array_index = data->stereo_depth.r_d.sub.array_index;
+
+	struct comp_render_layer *l = r->lr->layers[layer];
+
+	l->transformation_ubo_binding = r->lr->transformation_ubo_binding;
+	l->texture_binding = r->lr->texture_binding;
+
+	VkSampler clamp_to_border_black = r->c->nr.samplers.clamp_to_border_black;
+
+	VkImageView left_image_view = get_image_view( //
+	    left_image,                               //
+	    data->flags,                              //
+	    left_array_index);                        //
+
+	VkImageView right_image_view = get_image_view( //
+	    right_image,                               //
+	    data->flags,                               //
+	    right_array_index);                        //
+
+	VkImageView left_depth_view = get_image_view(
+		left_depth,
+		data->flags,
+		left_depth_array_index
+	);
+
+	VkImageView right_depth_view = get_image_view(
+		right_depth,
+		data->flags,
+		right_depth_array_index
+	);
+
+	comp_layer_update_stereo_depth_descriptors( //
+	    l,                                //
+	    clamp_to_border_black,            //
+	    clamp_to_border_black,            //
+	    left_image_view,                  //
+	    right_image_view,
+		clamp_to_border_black,
+		clamp_to_border_black,
+		left_depth_view,
+		right_depth_view);                //
+
+	comp_layer_set_flip_y(l, data->flip_y);
+
+	l->type = XRT_LAYER_STEREO_PROJECTION_DEPTH;
 	l->flags = data->flags;
 	l->view_space = (data->flags & XRT_LAYER_COMPOSITION_VIEW_SPACE_BIT) != 0;
 

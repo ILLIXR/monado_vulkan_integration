@@ -25,8 +25,30 @@ struct comp_layer_renderer
 		VkImage image;
 		VkDeviceMemory memory;
 		VkImageView view;
+
+		VkDeviceSize image_size;
+		VkDeviceSize image_offset;
+		VkExtent2D image_extent;
+
+		// Need depth for OpenWarp - 
+		// one is written to for encoding,
+		// the other is used for actual depth testing.
+		VkImage depth_image;
+		VkDeviceMemory depth_memory;
+		VkImageView depth_view;
+		VkDeviceSize depth_size;
+		VkDeviceSize depth_offset;
+		VkExtent2D depth_extent;
+		
+		VkImage depth_attachment_image;
+		VkDeviceMemory depth_attachment_memory;
+		VkImageView depth_attachment_view;
+		VkDeviceSize depth_attachment_size;
+		VkDeviceSize depth_attachment_offset;
+		VkExtent2D depth_attachment_extent;
+
 		VkFramebuffer handle;
-	} framebuffers[2];
+	} framebuffers[2 * OFFLOAD_BUFFER_POOL_SIZE];
 
 	struct vk_cmd_pool pool;
 
@@ -41,8 +63,10 @@ struct comp_layer_renderer
 	VkPipeline pipeline_unpremultiplied_alpha;
 	VkPipeline pipeline_equirect1;
 	VkPipeline pipeline_equirect2;
+	VkPipeline pipeline_depth;
 	VkPipeline pipeline_cube;
 	VkDescriptorSetLayout descriptor_set_layout;
+	VkDescriptorSetLayout descriptor_depth_set_layout;
 	VkDescriptorSetLayout descriptor_set_layout_equirect;
 
 	VkPipelineLayout pipeline_layout;
@@ -62,6 +86,7 @@ struct comp_layer_renderer
 
 	uint32_t transformation_ubo_binding;
 	uint32_t texture_binding;
+	uint32_t depth_binding;
 };
 
 /*!
@@ -88,7 +113,7 @@ comp_layer_renderer_destroy(struct comp_layer_renderer **ptr_clr);
  * @public @memberof comp_layer_renderer
  */
 void
-comp_layer_renderer_draw(struct comp_layer_renderer *self);
+comp_layer_renderer_draw(struct comp_layer_renderer *self, int8_t ind);
 
 /*!
  * Update the internal members derived from the field of view.

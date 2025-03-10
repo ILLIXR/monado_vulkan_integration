@@ -16,6 +16,7 @@
 #include "util/u_logging.h"
 #include "util/u_misc.h"
 
+#include <stdio.h>
 #include <assert.h>
 
 #define FPS_WIDGET_NUM_FRAME_TIMES 50
@@ -67,6 +68,8 @@ u_frame_times_widget_push_sample(struct u_frame_times_widget *widget, uint64_t n
 	assert(widget->index < FPS_WIDGET_NUM_FRAME_TIMES);
 	assert(last_index >= 0);
 	assert(last_index < FPS_WIDGET_NUM_FRAME_TIMES);
+
+	printf("COMPOSITOR RUNNING AT %.2f FPS\n", widget->fps);
 
 	uint64_t diff = widget->times_ns[widget->index] - widget->times_ns[last_index];
 	widget->timings_ms[widget->index] = (float)time_ns_to_ms_f(diff);

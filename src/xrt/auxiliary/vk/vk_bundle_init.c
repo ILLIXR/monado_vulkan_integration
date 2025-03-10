@@ -21,6 +21,8 @@
 
 #include <stdio.h>
 
+#include "../../compositor/util/comp_vulkan.h"
+
 
 /*
  *
@@ -133,6 +135,10 @@ vk_fill_in_has_instance_extensions(struct vk_bundle *vk, struct u_string_list *e
 
 	for (uint32_t i = 0; i < ext_count; i++) {
 		const char *ext = exts[i];
+
+#ifndef NDEBUG
+		U_LOG_IFL(U_LOGGING_DEBUG, vk->log_level, ext);
+#endif
 
 #if defined(VK_EXT_display_surface_counter)
 		if (strcmp(ext, VK_EXT_DISPLAY_SURFACE_COUNTER_EXTENSION_NAME) == 0) {
@@ -656,6 +662,9 @@ fill_in_has_device_extensions(struct vk_bundle *vk, struct u_string_list *ext_li
 	vk->has_KHR_maintenance3 = false;
 	vk->has_KHR_maintenance4 = false;
 	vk->has_KHR_timeline_semaphore = false;
+	vk->has_KHR_video_queue = false;
+	vk->has_KHR_video_encode_queue = false;
+	vk->has_EXT_video_encode_h264 = false;
 	vk->has_EXT_calibrated_timestamps = false;
 	vk->has_EXT_display_control = false;
 	vk->has_EXT_external_memory_dma_buf = false;
@@ -740,6 +749,29 @@ fill_in_has_device_extensions(struct vk_bundle *vk, struct u_string_list *ext_li
 		}
 #endif // defined(VK_KHR_timeline_semaphore)
 
+/*
+#if defined(VK_KHR_video_queue)
+		if (strcmp(ext, VK_KHR_VIDEO_QUEUE_EXTENSION_NAME) == 0) {
+			vk->has_KHR_video_queue = true;
+			continue;
+		}
+#endif // defined(VK_KHR_video_queue)
+
+#if defined(VK_KHR_video_encode_queue)
+		if (strcmp(ext, VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME) == 0) {
+			vk->has_KHR_video_encode_queue = true;
+			continue;
+		}
+#endif // defined(VK_KHR_video_encode_queue)
+
+#if defined(VK_EXT_video_encode_h264)
+		if (strcmp(ext, VK_EXT_VIDEO_ENCODE_H264_EXTENSION_NAME) == 0) {
+			vk->has_EXT_video_encode_h264 = true;
+			continue;
+		}
+#endif // defined(VK_EXT_video_encode_h264)
+*/
+
 #if defined(VK_EXT_calibrated_timestamps)
 		if (strcmp(ext, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME) == 0) {
 			vk->has_EXT_calibrated_timestamps = true;
@@ -790,6 +822,8 @@ fill_in_has_device_extensions(struct vk_bundle *vk, struct u_string_list *ext_li
 #endif // defined(VK_GOOGLE_display_timing)
 	}
 	// end of GENERATED device extension code - do not modify - used by scripts
+
+	vk_print_device_extensions_info(vk, U_LOGGING_DEBUG);
 }
 
 static VkResult
@@ -1008,7 +1042,8 @@ vk_create_device(struct vk_bundle *vk,
                  VkQueueGlobalPriorityEXT global_priority,
                  struct u_string_list *required_device_ext_list,
                  struct u_string_list *optional_device_ext_list,
-                 const struct vk_device_features *optional_device_features)
+                 const struct vk_device_features *optional_device_features,
+                 struct u_string_list **out_list)
 {
 	VkResult ret;
 
@@ -1022,6 +1057,7 @@ vk_create_device(struct vk_bundle *vk,
 	                             &device_ext_list)) {
 		return VK_ERROR_EXTENSION_NOT_PRESENT;
 	}
+	*out_list = device_ext_list;
 
 
 	/*
@@ -1130,7 +1166,6 @@ vk_create_device(struct vk_bundle *vk,
 
 	ret = vk->vkCreateDevice(vk->physical_device, &device_create_info, NULL, &vk->device);
 
-	u_string_list_destroy(&device_ext_list);
 
 	if (ret != VK_SUCCESS) {
 		VK_DEBUG(vk, "vkCreateDevice: %s (%d)", vk_result_string(ret), ret);

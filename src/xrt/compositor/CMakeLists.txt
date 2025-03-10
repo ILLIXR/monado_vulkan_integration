@@ -121,6 +121,8 @@ if(XRT_HAVE_VULKAN)
 	    shaders/layer.comp
 	    shaders/mesh.frag
 	    shaders/mesh.vert
+		shaders/depth.frag
+	    shaders/depth.vert
 	    shaders/layer.frag
 	    shaders/layer.vert
 	    shaders/equirect1.vert
@@ -204,8 +206,9 @@ if(XRT_MODULE_COMPOSITOR_MAIN)
 
 	if(XRT_HAVE_XCB)
 		target_sources(comp_main PRIVATE main/comp_window_xcb.c)
-		target_include_directories(comp_main SYSTEM PRIVATE ${XCB_INCLUDE_DIRS})
-		target_link_libraries(comp_main PRIVATE ${XCB_LIBRARIES})
+		target_include_directories(comp_main SYSTEM PRIVATE ${XCB_INCLUDE_DIRS} ${X11_xcb_icccm_INCLUDE_PATH})
+		target_link_libraries(comp_main PRIVATE ${XCB_LIBRARIES} ${X11_xcb_icccm_LIB})
+		# message("XCB: ${X11_xcb_icccm_INCLUDE_PATH} ${X11_xcb_icccm_LIB}")
 		if(XRT_HAVE_EGL)
 			target_include_directories(comp_main SYSTEM PRIVATE ${EGL_INCLUDE_DIRS})
 			target_link_libraries(comp_main PRIVATE ${XCB_LIBRARIES})
