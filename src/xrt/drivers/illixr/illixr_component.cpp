@@ -26,7 +26,7 @@
 #include "illixr/plugin.hpp"
 #include "illixr/phonebook.hpp"
 #include "illixr/switchboard.hpp"
-#include "illixr/pose_prediction.hpp"
+#include "illixr/data_format/pose_prediction.hpp"
 #include "illixr/vk/render_pass.hpp"
 #include "illixr/vk/display_provider.hpp"
 #include "illixr/vk/vulkan_objects.hpp"
@@ -39,6 +39,7 @@
 
 using namespace ILLIXR;
 using namespace ILLIXR::vulkan;
+using namespace ILLIXR::data_format;
 
 const std::string PREFIX = "\e[0;32m[Monado ILLIXR]\e[0m ";
 
@@ -61,7 +62,7 @@ public:
 		, sb{phonebook_->lookup_impl<switchboard>()}
 		, sb_pose{phonebook_->lookup_impl<pose_prediction>()}
 		, sb_clock{phonebook_->lookup_impl<relative_clock>()}
-		, ds{std::make_shared<monado_vulkan_display_sink>()}
+		, ds{std::make_shared<monado_vulkan_display_provider>()}
 		, _m_vsync{sb->get_writer<switchboard::event_wrapper<time_point>>("vsync_estimate")}
 	{
 		sb_timewarp = pb_->lookup_impl<timewarp>();
@@ -194,23 +195,23 @@ extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, Vk
                                                          struct u_string_list* enabled_device_extensions) {
 	printf("Initializing vulkan display service\n");
 	auto ds = std::make_shared<monado_vulkan_display_provider>();
-	ds->vk_instance = instance;
-	ds->vk_physical_device = physical_device;
-	ds->vk_device = device;
-	ds->queues[queue::GRAPHICS] = {queue, queue_family_index, queue::GRAPHICS, std::make_shared<std::mutex>()};
+	ds->vk_instance_ = instance;
+	ds->vk_physical_device_ = physical_device;
+	ds->vk_device_ = device;
+	ds->queues_[queue::GRAPHICS] = {queue, queue_family_index, queue::GRAPHICS, std::make_shared<std::mutex>()};
 
 	const char* const * exts = u_string_list_get_data(enabled_instance_extensions);
 	uint32_t ext_count = u_string_list_get_size(enabled_instance_extensions);
 
 	for (uint32_t i = 0; i < ext_count; i++) {
-		ds->enabled_instance_extensions.push_back(exts[i]);
+		ds->enabled_instance_extensions_.push_back(exts[i]);
 	}
 
 	const char* const * dev_exts = u_string_list_get_data(enabled_device_extensions);
 	uint32_t dev_ext_count = u_string_list_get_size(enabled_device_extensions);
 
 	for (uint32_t i = 0; i < dev_ext_count; i++) {
-		ds->enabled_device_extensions.push_back(dev_exts[i]);
+		ds->enabled_device_extensions_.push_back(dev_exts[i]);
 	}
 
 	_ds_ready = true;
