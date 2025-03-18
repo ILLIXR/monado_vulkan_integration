@@ -179,12 +179,6 @@ illixr_rt_launch(struct illixr_hmd *dh, const char *path, const char *comp)
 {
 	dh->runtime_lib = new ILLIXR::dynamic_lib{ILLIXR::dynamic_lib::create(std::string{path})};
 	dh->runtime = dh->runtime_lib->get<ILLIXR::runtime *(*)()>("runtime_factory")();
-
-	if (dh->runtime->get_switchboard()->get_env_char("ILLIXR_DISPLAY_MODE") == nullptr) {
-		printf("[Monado] Display mode not selected, defaulting to GLFW.\n");
-		dh->runtime->get_switchboard()->set_env("ILLIXR_DISPLAY_MODE", "glfw");
-	}
-	
 	dh->runtime->load_so(split(std::string{comp}, ':'));
 	dh->runtime->load_plugin_factory((ILLIXR::plugin_factory)illixr_monado_create_plugin);
 
@@ -231,7 +225,7 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 
 	// Setup info.
 	struct u_device_simple_info info;
-	info.display.w_pixels = 2 * get_server_width();
+	info.display.w_pixels = get_server_width();
 	info.display.h_pixels = get_server_height();
 	info.display.w_meters = 0.122f;
 	info.display.h_meters = 0.07f;
