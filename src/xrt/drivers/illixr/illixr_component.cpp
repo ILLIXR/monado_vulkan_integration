@@ -59,6 +59,7 @@ class illixr_plugin : public plugin
 public:
 	illixr_plugin(const std::string& name_, phonebook *pb_)
 	    : plugin{name_, pb_}
+        , pb{pb_}
 		, sb{phonebook_->lookup_impl<switchboard>()}
 		, sb_pose{phonebook_->lookup_impl<pose_prediction>()}
 		, sb_clock{phonebook_->lookup_impl<relative_clock>()}
