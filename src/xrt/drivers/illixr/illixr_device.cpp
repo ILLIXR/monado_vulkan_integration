@@ -244,26 +244,17 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 		scale = std::stof(std::getenv("ILLIXR_OVERSCAN"));
 	}
 
-
 	// The server may render at a different FOV than the client.
 	for (int eye = 0; eye < 2; eye++) {
-		float tan_left = ILLIXR::server_params::fov_left[eye];
-		float tan_right = ILLIXR::server_params::fov_right[eye];
-		float tan_up = ILLIXR::server_params::fov_up[eye];
-		float tan_down = ILLIXR::server_params::fov_down[eye];
-		float fov_left = std::atan(tan_left);
-		float fov_right = std::atan(tan_right);
-		float fov_up = std::atan(tan_up);
-		float fov_down = std::atan(tan_down);
-		tan_left = std::tan(fov_left * scale);
-		tan_right = std::tan(fov_right * scale);
-		tan_up = std::tan(fov_up * scale);
-		tan_down = std::tan(fov_down * scale);
+		float fov_left = scale * ILLIXR::server_params::fov_left[eye];
+		float fov_right = scale * ILLIXR::server_params::fov_right[eye];
+		float fov_up = scale * ILLIXR::server_params::fov_up[eye];
+		float fov_down = scale * ILLIXR::server_params::fov_down[eye];
 
-		dh->base.hmd->distortion.fov[eye].angle_left = tan_left;
-		dh->base.hmd->distortion.fov[eye].angle_right = tan_right;
-		dh->base.hmd->distortion.fov[eye].angle_up = tan_up;
-		dh->base.hmd->distortion.fov[eye].angle_down = tan_down;
+		dh->base.hmd->distortion.fov[eye].angle_left = fov_left;
+		dh->base.hmd->distortion.fov[eye].angle_right = fov_right;
+		dh->base.hmd->distortion.fov[eye].angle_up = fov_up;
+		dh->base.hmd->distortion.fov[eye].angle_down = fov_down;
 	}
 
 	// Setup variable tracker.
