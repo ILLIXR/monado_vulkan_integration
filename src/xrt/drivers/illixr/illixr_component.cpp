@@ -74,20 +74,9 @@ public:
 		if (std::getenv("ILLIXR_OFFLOAD_FRAMES") != nullptr) {
 			offload_frames = std::stoi(std::getenv("ILLIXR_OFFLOAD_FRAMES"));
 		}
-		
-		if (std::getenv("ILLIXR_ARTIFICIAL_LATENCY_MS") != nullptr) {
-			artificial_latency = std::stoi(std::getenv("ILLIXR_ARTIFICIAL_LATENCY_MS"));
-		}
 
 		if (std::getenv("ILLIXR_COMPOSITOR_SLEEP_NS") != nullptr) {
 			sleep_time = std::stoi(std::getenv("ILLIXR_COMPOSITOR_SLEEP_NS"));
-		}
-
-		if (std::getenv("ILLIXR_POSE_DUMP") != nullptr) {
-			dump_poses = true;
-			std::string file_dump = std::getenv("ILLIXR_POSE_DUMP");
-			pose_file.open(file_dump);
-			pose_start_time = std::chrono::system_clock::now();
 		}
 	}
 
@@ -108,15 +97,6 @@ public:
 	switchboard::writer<switchboard::event_wrapper<time_point>> _m_vsync;
 
 	pose_type last_pose;
-
-	std::chrono::time_point<std::chrono::system_clock> buffer_start_time;
-	std::queue<pose_type> buffered_poses;
-	std::mutex buffered_pose_mutex;
-	uint64_t artificial_latency = 0; 
-
-	bool dump_poses = false;
-	std::ofstream pose_file;
-	std::chrono::time_point<std::chrono::system_clock> pose_start_time;
 };
 
 static illixr_plugin *illixr_plugin_obj = nullptr;
@@ -145,46 +125,14 @@ illixr_read_pose()
 	}
 	struct xrt_pose ret;
 	const fast_pose_type fast_pose = illixr_plugin_obj->sb_pose->get_fast_pose();
-
-	if (illixr_plugin_obj->artificial_latency > 0) {
-		std::lock_guard<std::mutex> lock(illixr_plugin_obj->buffered_pose_mutex);
-		
-		if (illixr_plugin_obj->buffered_poses.empty()) {
-			illixr_plugin_obj->buffer_start_time = std::chrono::system_clock::now();
-		}
-		illixr_plugin_obj->buffered_poses.push(fast_pose.pose);
-
-		std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
-		if (std::chrono::duration_cast<std::chrono::milliseconds>(now - illixr_plugin_obj->buffer_start_time).count() > illixr_plugin_obj->artificial_latency) {
-			const pose_type past_pose = illixr_plugin_obj->buffered_poses.front();
-			illixr_plugin_obj->buffered_poses.pop(); 
-
-			ret.orientation.x = past_pose.orientation.x();
-			ret.orientation.y = past_pose.orientation.y();
-			ret.orientation.z = past_pose.orientation.z();
-			ret.orientation.w = past_pose.orientation.w();
-			ret.position.x = past_pose.position.x();
-			ret.position.y = past_pose.position.y();
-			ret.position.z = past_pose.position.z();
-		} else {
-			ret.orientation.x = 0;
-			ret.orientation.y = 0;
-			ret.orientation.z = 0;
-			ret.orientation.w = 1;
-			ret.position.x = 0;
-			ret.position.y = 0;
-			ret.position.z = 0;
-		}
-	} else {
-		const pose_type curr_pose = fast_pose.pose;
-		ret.orientation.x = curr_pose.orientation.x();
-		ret.orientation.y = curr_pose.orientation.y();
-		ret.orientation.z = curr_pose.orientation.z();
-		ret.orientation.w = curr_pose.orientation.w();
-		ret.position.x = curr_pose.position.x();
-		ret.position.y = curr_pose.position.y();
-		ret.position.z = curr_pose.position.z();
-	}
+	const pose_type curr_pose = fast_pose.pose;
+	ret.orientation.x = curr_pose.orientation.x();
+	ret.orientation.y = curr_pose.orientation.y();
+	ret.orientation.z = curr_pose.orientation.z();
+	ret.orientation.w = curr_pose.orientation.w();
+	ret.position.x = curr_pose.position.x();
+	ret.position.y = curr_pose.position.y();
+	ret.position.z = curr_pose.position.z();
 
 	return ret;
 }
@@ -317,17 +265,6 @@ extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {
 					Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
 					};
 		illixr_plugin_obj->last_pose = pose;
-
-		if (illixr_plugin_obj->dump_poses) {
-			std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
-			uint64_t milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - illixr_plugin_obj->pose_start_time).count();
-
-			// Prints as: [time] [position] [orientation] without any metadata
-			illixr_plugin_obj->pose_file << milliseconds << '\t'
-				<< pose.position.x() << " " << pose.position.y() << " " << pose.position.z() << " " 
-				<< pose.orientation.x() << " " << pose.orientation.y() << " " << pose.orientation.z() << " " << pose.orientation.w() << '\n';
-			illixr_plugin_obj->pose_file.flush();
-		}
 	}
 }
 
