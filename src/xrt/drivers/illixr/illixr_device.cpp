@@ -158,7 +158,8 @@ split(const std::string &s, char delimiter)
 
 uint32_t get_server_width() {
 	if (std::getenv("ILLIXR_SERVER_WIDTH") == nullptr) {
-		throw std::runtime_error("ILLIXR_SERVER_WIDTH not defined!");
+		printf("[Monado] Display width not specified, defaulting to {}.", ILLIXR::display_params::width_pixels);
+		return ILLIXR::display_params::width_pixels;
 	}
 	
 	return std::stoi(std::getenv("ILLIXR_SERVER_WIDTH"));
@@ -166,7 +167,8 @@ uint32_t get_server_width() {
 
 uint32_t get_server_height() {
 	if (std::getenv("ILLIXR_SERVER_HEIGHT") == nullptr) {
-		throw std::runtime_error("ILLIXR_SERVER_HEIGHT not defined!");
+		printf("[Monado] Display height not specified, defaulting to {}.", ILLIXR::display_params::height_pixels);
+		return ILLIXR::display_params::height_pixels;
 	}
 	
 	return std::stoi(std::getenv("ILLIXR_SERVER_HEIGHT"));
