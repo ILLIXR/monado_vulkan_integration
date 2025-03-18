@@ -952,7 +952,7 @@ get_image_view(const struct comp_swapchain_image *image, enum xrt_layer_composit
 
 static void
 release_frame(struct comp_layer_renderer *lr, uint8_t buffer_ind) {
-	struct comp_render_layer *layer;
+	struct comp_render_layer *layer = NULL;
 	for (int i = 0; i < lr->layer_count; i++) {
 		layer = lr->layers[i];
 		if (layer->type == XRT_LAYER_STEREO_PROJECTION || layer->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
