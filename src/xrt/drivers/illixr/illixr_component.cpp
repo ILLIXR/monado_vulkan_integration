@@ -68,10 +68,6 @@ public:
 	{
 		sb_timewarp = pb_->lookup_impl<timewarp>();
 
-		if (std::getenv("ILLIXR_USE_LOSSY_DEPTH") != nullptr) {
-			use_lossy_depth = std::stoi(std::getenv("ILLIXR_USE_LOSSY_DEPTH"));
-		}
-
 		if (std::getenv("ILLIXR_OFFLOAD_FRAMES") != nullptr) {
 			offload_frames = std::stoi(std::getenv("ILLIXR_OFFLOAD_FRAMES"));
 		}
@@ -84,7 +80,6 @@ public:
 	std::atomic<bool> ready = false;
 	
 	bool offload_frames = false;
-	bool use_lossy_depth = false;
 	int sleep_time = -1;
 
 	phonebook *pb;
@@ -216,7 +211,7 @@ extern "C" void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t su
 			image_arr[eye].allocation_info.offset = offset[i * 4 + eye * 2 + 1];
 			image_arr[eye].allocation_info.deviceMemory = device_memory[i * 4 + eye * 2 + 1];
 			image_arr[eye].image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-			image_arr[eye].image_info.format = illixr_plugin_obj->use_lossy_depth ? VK_FORMAT_B8G8R8A8_UNORM : VK_FORMAT_D32_SFLOAT;
+			image_arr[eye].image_info.format = VK_FORMAT_B8G8R8A8_UNORM;
 			image_arr[eye].image_info.extent = {extent.width, extent.height, 1};
 		}
 		depth_image_pool.push_back(image_arr);
@@ -240,11 +235,6 @@ extern "C" void illixr_src_release(int8_t buffer_ind, struct xrt_pose l_pose, st
 					Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
 					};
 	illixr_plugin_obj->buffer_pool->src_release_image(buffer_ind, fast_pose_type {pose, {}, {}});
-}
-
-extern "C" bool illixr_use_lossy_depth() {
-	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
-	return illixr_plugin_obj->use_lossy_depth;
 }
 
 extern "C" bool illixr_offload_frames() {

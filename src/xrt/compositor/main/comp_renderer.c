@@ -605,19 +605,11 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 			size[2 * i] = r->lr->framebuffers[i].image_size;
 			offset[2 * i] = r->lr->framebuffers[i].image_offset;
 
-			if (illixr_use_lossy_depth()) {
-				images[2 * i + 1] = r->lr->framebuffers[i].depth_image;
-				image_view[2 * i + 1] = r->lr->framebuffers[i].depth_view;
-				device_memory[2 * i + 1] = r->lr->framebuffers[i].depth_memory;
-				size[2 * i + 1] = r->lr->framebuffers[i].depth_size;
-				offset[2 * i + 1] = r->lr->framebuffers[i].depth_offset;
-			} else {
-				images[2 * i + 1] = r->lr->framebuffers[i].depth_attachment_image;
-				image_view[2 * i + 1] = r->lr->framebuffers[i].depth_attachment_view;
-				device_memory[2 * i + 1] = r->lr->framebuffers[i].depth_attachment_memory;
-				size[2 * i + 1] = r->lr->framebuffers[i].depth_attachment_size;
-				offset[2 * i + 1] = r->lr->framebuffers[i].depth_attachment_offset;
-			}
+			images[2 * i + 1] = r->lr->framebuffers[i].depth_image;
+			image_view[2 * i + 1] = r->lr->framebuffers[i].depth_view;
+			device_memory[2 * i + 1] = r->lr->framebuffers[i].depth_memory;
+			size[2 * i + 1] = r->lr->framebuffers[i].depth_size;
+			offset[2 * i + 1] = r->lr->framebuffers[i].depth_offset;
 		}
 
 

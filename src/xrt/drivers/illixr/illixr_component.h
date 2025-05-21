@@ -30,7 +30,6 @@ void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t subpass, VkEx
 int8_t illixr_src_acquire();
 void illixr_src_release(int8_t buffer_ind, struct xrt_pose l_pose, struct xrt_pose r_pose);
 void illixr_destroy_timewarp(void);
-bool illixr_use_lossy_depth();
 bool illixr_offload_frames();
 int illixr_sleep_time();
 void illixr_tw_update_uniforms(struct xrt_pose l_pose, struct xrt_pose r_pose);
