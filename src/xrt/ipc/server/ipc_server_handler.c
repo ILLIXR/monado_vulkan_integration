@@ -18,6 +18,7 @@
 #ifdef XRT_GRAPHICS_SYNC_HANDLE_IS_FD
 #include <unistd.h>
 #endif
+#include <stdio.h>
 
 
 /*
@@ -488,6 +489,7 @@ ipc_handle_compositor_predict_frame(volatile struct ipc_client_state *ics,
 	ipc_server_activate_session(ics);
 
 	uint64_t gpu_time_ns = 0;
+	printf("PREDICT_FRAME - calling xrt_comp_predict_frame in ipc_handle_compositor_predict_frame\n");
 	return xrt_comp_predict_frame(        //
 	    ics->xc,                          //
 	    out_frame_id,                     //
@@ -1388,6 +1390,45 @@ ipc_handle_device_get_tracked_pose(volatile struct ipc_client_state *ics,
 }
 
 xrt_result_t
+ipc_handle_device_get_tracked_pose_render(volatile struct ipc_client_state *ics,
+                                   uint32_t id,
+                                   enum xrt_input_name name,
+                                   uint64_t at_timestamp,
+								   int64_t frame_id,
+                                   struct xrt_space_relation *out_relation)
+{
+	// To make the code a bit more readable.
+	uint32_t device_id = id;
+	struct ipc_device *isdev = &ics->server->idevs[device_id];
+	struct xrt_device *xdev = isdev->xdev;
+
+	// Find the input
+	struct xrt_input *input = find_input(ics, device_id, name);
+	if (input == NULL) {
+		return XRT_ERROR_IPC_FAILURE;
+	}
+
+	// Special case the headpose.
+	bool disabled = (!isdev->io_active || !ics->io_active) && name != XRT_INPUT_GENERIC_HEAD_POSE;
+	bool active_on_client = input->active;
+
+	// We have been disabled but the client hasn't called update.
+	if (disabled && active_on_client) {
+		U_ZERO(out_relation);
+		return XRT_SUCCESS;
+	}
+
+	if (disabled || !active_on_client) {
+		return XRT_ERROR_POSE_NOT_ACTIVE;
+	}
+
+	// Get the pose.
+	xrt_device_get_tracked_pose_render(xdev, name, at_timestamp, frame_id, out_relation);
+
+	return XRT_SUCCESS;
+}
+
+xrt_result_t
 ipc_handle_device_get_hand_tracking(volatile struct ipc_client_state *ics,
                                     uint32_t id,
                                     enum xrt_input_name name,
@@ -1425,6 +1466,31 @@ ipc_handle_device_get_view_poses_2(volatile struct ipc_client_state *ics,
 	    &out_info->head_relation, //
 	    out_info->fovs,           //
 	    out_info->poses);         //
+
+	return XRT_SUCCESS;
+}
+
+xrt_result_t
+ipc_handle_device_get_view_poses_2_render(volatile struct ipc_client_state *ics,
+                                   uint32_t id,
+                                   const struct xrt_vec3 *default_eye_relation,
+                                   uint64_t at_timestamp_ns,
+								   int64_t frame_id,
+                                   struct ipc_info_get_view_poses_2 *out_info)
+{
+	// To make the code a bit more readable.
+	uint32_t device_id = id;
+	struct xrt_device *xdev = get_xdev(ics, device_id);
+
+	xrt_device_get_view_poses_render(    //
+	    xdev,                     //
+	    default_eye_relation,     //
+	    at_timestamp_ns,          //
+	    2,                        //
+	    &out_info->head_relation, //
+	    out_info->fovs,
+		frame_id,           //
+	    out_info->poses);                //
 
 	return XRT_SUCCESS;
 }

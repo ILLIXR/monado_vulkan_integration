@@ -346,13 +346,15 @@ oxr_session_locate_views(struct oxr_logger *log,
 	struct xrt_fov fovs[2] = {0};
 	struct xrt_pose poses[2] = {0};
 
-	xrt_device_get_view_poses( //
+	oxr_log(log, "oxr_session_locate_views called at frame_id.waited: %d, frame_id.begun: %d", sess->frame_id.waited, sess->frame_id.begun);
+	xrt_device_get_view_poses_render( //
 	    xdev,                  //
 	    &default_eye_relation, //
 	    xdisplay_time,         //
 	    2,                     //
 	    &T_xdev_head,          //
-	    fovs,                  //
+	    fovs,
+		sess->frame_id.waited,                  //
 	    poses);
 
 	// The xdev pose in the base space.
@@ -405,6 +407,7 @@ oxr_session_locate_views(struct oxr_logger *log,
 		m_relation_chain_resolve(&xrc, &result);
 		OXR_XRT_POSE_TO_XRPOSEF(result.pose, views[i].pose);
 
+		oxr_log(log, "oxr_session_locate_views: view[%i].pose: %f %f %f %f %f %f %f %f", i, views[i].pose.position.x, views[i].pose.position.y, views[i].pose.position.z, views[i].pose.orientation.x, views[i].pose.orientation.y, views[i].pose.orientation.z, views[i].pose.orientation.w);
 
 		/*
 		 * Fov
@@ -522,6 +525,7 @@ do_wait_frame_and_checks(struct oxr_logger *log,
 XrResult
 oxr_session_frame_wait(struct oxr_logger *log, struct oxr_session *sess, XrFrameState *frameState)
 {
+	oxr_log(log, "OXR_SESSION_FRAME_WAIT called at frame_id.waited: %d, frame_id.begun: %d", sess->frame_id.waited, sess->frame_id.begun);
 	//! @todo this should be carefully synchronized, because there may be
 	//! more than one session per instance.
 	XRT_MAYBE_UNUSED timepoint_ns now = time_state_get_now_and_update(sess->sys->inst->timekeeping);
@@ -602,6 +606,7 @@ oxr_session_frame_wait(struct oxr_logger *log, struct oxr_session *sess, XrFrame
 XrResult
 oxr_session_frame_begin(struct oxr_logger *log, struct oxr_session *sess)
 {
+	oxr_log(log, "OXR_SESSION_FRAME_BEGIN called at frame_id.waited: %d, frame_id.begun: %d", sess->frame_id.waited, sess->frame_id.begun);
 	struct xrt_compositor *xc = sess->compositor;
 
 	os_mutex_lock(&sess->active_wait_frames_lock);

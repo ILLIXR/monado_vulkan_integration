@@ -1,0 +1,163 @@
+auxiliary/math/m_relation_history.cpp:	enum xrt_space_relation_flags &outf = out_relation->relation_flags;
+auxiliary/math/m_relation_history.cpp:		out_relation->linear_velocity = (in_relation->pose.position - last_relation.pose.position) / dt;
+auxiliary/math/m_relation_history.cpp:		                            &out_relation->angular_velocity);
+auxiliary/math/m_relation_history.cpp:	out_relation->pose = in_relation->pose;
+auxiliary/math/m_relation_history.h: * Copies in_relation->pose to out_relation->pose, and writes new flags and linear/angular velocities to
+auxiliary/math/m_relation_history.h: * out_relation->pose. OK to alias in_relation and out_relation.
+auxiliary/math/m_space.cpp:	out_relation->relation_flags = relation->relation_flags;
+auxiliary/math/m_space.cpp:	math_pose_invert(&relation->pose, &out_relation->pose);
+auxiliary/math/m_space.cpp:	out_relation->linear_velocity = m_vec3_mul_scalar(relation->linear_velocity, -1);
+auxiliary/math/m_space.cpp:	out_relation->angular_velocity = m_vec3_mul_scalar(relation->angular_velocity, -1);
+auxiliary/math/m_space.cpp:	out_relation->relation_flags = flags;
+auxiliary/math/m_space.cpp:		math_quat_slerp(&a->pose.orientation, &b->pose.orientation, t, &out_relation->pose.orientation);
+auxiliary/math/m_space.cpp:		out_relation->pose.position = m_vec3_lerp(a->pose.position, b->pose.position, t);
+auxiliary/math/m_space.cpp:		out_relation->linear_velocity = m_vec3_lerp(a->linear_velocity, b->linear_velocity, t);
+auxiliary/math/m_space.cpp:		out_relation->angular_velocity = m_vec3_lerp(a->angular_velocity, b->angular_velocity, t);
+auxiliary/util/u_space_overseer.c:		out_relation->pose = (struct xrt_pose)XRT_POSE_IDENTITY;
+auxiliary/util/u_space_overseer.c:		out_relation->relation_flags =                   //
+auxiliary/tracking/t_tracker_psmv_fusion.cpp:		out_relation->pose.orientation.w = 1;
+auxiliary/tracking/t_tracker_psmv_fusion.cpp:		map_vec3(out_relation->pose.position) = predicted_state.position().cast<float>();
+auxiliary/tracking/t_tracker_psmv_fusion.cpp:		map_quat(out_relation->pose.orientation) = predicted_state.getQuaternion().cast<float>();
+auxiliary/tracking/t_tracker_psmv_fusion.cpp:		map_vec3(out_relation->linear_velocity) = predicted_state.velocity().cast<float>();
+auxiliary/tracking/t_tracker_psmv_fusion.cpp:		map_vec3(out_relation->angular_velocity) = predicted_state.angularVelocity().cast<float>();
+auxiliary/tracking/t_tracker_psmv_fusion.cpp:		out_relation->relation_flags = (xrt_space_relation_flags)flags;
+auxiliary/tracking/t_tracker_psmv.cpp:		out_relation->pose.position = t.tracked_object_position;
+auxiliary/tracking/t_tracker_psmv.cpp:		out_relation->pose.orientation.x = 0.0f;
+auxiliary/tracking/t_tracker_psmv.cpp:		out_relation->pose.orientation.y = 0.0f;
+auxiliary/tracking/t_tracker_psmv.cpp:		out_relation->pose.orientation.z = 0.0f;
+auxiliary/tracking/t_tracker_psmv.cpp:		out_relation->pose.orientation.w = 1.0f;
+auxiliary/tracking/t_tracker_psmv.cpp:		out_relation->relation_flags = (enum xrt_space_relation_flags)(XRT_SPACE_RELATION_POSITION_VALID_BIT |
+auxiliary/tracking/t_tracker_slam.cpp:		out_relation->relation_flags = XRT_SPACE_RELATION_BITMASK_NONE;
+auxiliary/tracking/t_tracker_slam.cpp:		if (out_relation->relation_flags & XRT_SPACE_RELATION_POSITION_VALID_BIT) {
+auxiliary/tracking/t_tracker_slam.cpp:			xrt_vec3 pos = out_relation->pose.position;
+auxiliary/tracking/t_tracker_slam.cpp:		if (out_relation->relation_flags & XRT_SPACE_RELATION_ORIENTATION_VALID_BIT) {
+auxiliary/tracking/t_tracker_slam.cpp:			xrt_vec3 rot = {out_relation->pose.orientation.x, out_relation->pose.orientation.y,
+auxiliary/tracking/t_tracker_slam.cpp:			                out_relation->pose.orientation.z};
+auxiliary/tracking/t_tracker_slam.cpp:		out_relation->pose.orientation = xrt_quat{avg_rot.x, avg_rot.y, avg_rot.z, avg_rot_w};
+auxiliary/tracking/t_tracker_slam.cpp:		out_relation->pose.position = avg_pos;
+auxiliary/tracking/t_tracker_slam.cpp:		xrt_pose &p = out_relation->pose;
+auxiliary/tracking/t_tracker_slam.cpp:		if (out_relation->relation_flags & XRT_SPACE_RELATION_POSITION_VALID_BIT) {
+auxiliary/tracking/t_tracker_slam.cpp:		if (out_relation->relation_flags & XRT_SPACE_RELATION_ORIENTATION_VALID_BIT) {
+auxiliary/tracking/t_tracker_slam.cpp:	t.pred_traj_writer->push(when_ns, out_relation->pose);
+auxiliary/tracking/t_tracker_slam.cpp:	t.filt_traj_writer->push(when_ns, out_relation->pose);
+auxiliary/tracking/t_tracker_slam.cpp:		out_relation->pose = gt2xr_pose(t.gt.origin, get_gt_pose_at(*t.gt.trajectory, when_ns));
+auxiliary/tracking/t_tracker_psvr.cpp:	out_relation->pose.position = t.optical.pos;
+auxiliary/tracking/t_tracker_psvr.cpp:	out_relation->pose.orientation = t.optical.rot;
+auxiliary/tracking/t_tracker_psvr.cpp:	out_relation->relation_flags = (enum xrt_space_relation_flags)(XRT_SPACE_RELATION_POSITION_VALID_BIT |
+auxiliary/tracking/t_tracker_psvr.cpp:		out_relation->relation_flags = (enum xrt_space_relation_flags)(
+auxiliary/tracking/t_tracker_psvr.cpp:		    out_relation->relation_flags | XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT);
+drivers/realsense/rs_hdev.c:	bool pose_tracked = out_relation->relation_flags & pose_bits;
+drivers/realsense/rs_hdev.c:		rh->pose = rs_hdev_correct_pose_from_kimera(out_relation->pose);
+drivers/realsense/rs_hdev.c:		rh->pose = rs_hdev_correct_pose_from_basalt(out_relation->pose);
+drivers/realsense/rs_hdev.c:		rh->pose = out_relation->pose;
+drivers/realsense/rs_hdev.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/hdk/hdk_device.cpp:		out_relation->relation_flags = XRT_SPACE_RELATION_BITMASK_NONE;
+drivers/hdk/hdk_device.cpp:	out_relation->pose.orientation = hd->quat;
+drivers/hdk/hdk_device.cpp:	out_relation->angular_velocity.x = hd->ang_vel_quat.x;
+drivers/hdk/hdk_device.cpp:	out_relation->angular_velocity.y = hd->ang_vel_quat.y;
+drivers/hdk/hdk_device.cpp:	out_relation->angular_velocity.z = hd->ang_vel_quat.z;
+drivers/hdk/hdk_device.cpp:	out_relation->relation_flags = xrt_space_relation_flags(XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
+drivers/pssense/pssense_driver.c:	out_relation->pose = pssense->pose;
+drivers/pssense/pssense_driver.c:	out_relation->linear_velocity.x = 0.0f;
+drivers/pssense/pssense_driver.c:	out_relation->linear_velocity.y = 0.0f;
+drivers/pssense/pssense_driver.c:	out_relation->linear_velocity.z = 0.0f;
+drivers/pssense/pssense_driver.c:	                            &out_relation->angular_velocity);
+drivers/pssense/pssense_driver.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/qwerty/qwerty_device.c:		out_relation->pose = qd->pose;
+drivers/qwerty/qwerty_device.c:	out_relation->relation_flags =
+drivers/remote/r_hmd.c:	out_relation->pose = rh->r->latest.head.center;
+drivers/remote/r_hmd.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/remote/r_device.c:	                            &out_relation->angular_velocity);
+drivers/remote/r_device.c:	out_relation->pose = latest->pose;
+drivers/remote/r_device.c:	out_relation->linear_velocity = latest->linear_velocity;
+drivers/remote/r_device.c:		out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/remote/r_device.c:		out_relation->relation_flags = 0;
+drivers/survive/survive_driver.c:	out_relation->pose.orientation = out_rot;
+drivers/survive/survive_driver.c:	out_relation->pose.position.x = pose->Pos[0];
+drivers/survive/survive_driver.c:	out_relation->pose.position.y = pose->Pos[2];
+drivers/survive/survive_driver.c:	out_relation->pose.position.z = -pose->Pos[1];
+drivers/survive/survive_driver.c:		out_relation->relation_flags |=
+drivers/survive/survive_driver.c:		if (math_vec3_validate(&out_relation->pose.position)) {
+drivers/survive/survive_driver.c:			out_relation->relation_flags |=
+drivers/survive/survive_driver.c:		out_relation->linear_velocity = linear_vel;
+drivers/survive/survive_driver.c:		if (math_vec3_validate(&out_relation->linear_velocity)) {
+drivers/survive/survive_driver.c:			out_relation->relation_flags |= XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT;
+drivers/survive/survive_driver.c:		out_relation->angular_velocity = angular_vel;
+drivers/survive/survive_driver.c:		if (math_vec3_validate(&out_relation->angular_velocity)) {
+drivers/survive/survive_driver.c:			out_relation->relation_flags |= XRT_SPACE_RELATION_ANGULAR_VELOCITY_VALID_BIT;
+drivers/survive/survive_driver.c:	struct xrt_pose *p = &out_relation->pose;
+drivers/vive/vive_device.c:	d->pose = out_relation->pose;
+drivers/vive/vive_device.c:	bool pose_tracked = out_relation->relation_flags & pose_bits;
+drivers/vive/vive_device.c:		d->pose = vive_device_correct_pose_from_basalt(out_relation->pose);
+drivers/vive/vive_device.c:		d->pose = out_relation->pose;
+drivers/vive/vive_device.c:	out_relation->pose = d->pose;
+drivers/vive/vive_device.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/vive/vive_device.c:	math_pose_transform(&d->offset, &out_relation->pose, &out_relation->pose);
+drivers/psmv/psmv_driver.c:	out_relation->pose.orientation = psmv->fusion.rot;
+drivers/psmv/psmv_driver.c:	out_relation->angular_velocity = psmv->fusion.angvel;
+drivers/psmv/psmv_driver.c:	out_relation->linear_velocity.x = 0.0f;
+drivers/psmv/psmv_driver.c:	out_relation->linear_velocity.y = 0.0f;
+drivers/psmv/psmv_driver.c:	out_relation->linear_velocity.z = 0.0f;
+drivers/psmv/psmv_driver.c:	math_quat_rotate_derivative(&psmv->fusion.rot, &psmv->fusion.angvel, &out_relation->angular_velocity);
+drivers/psmv/psmv_driver.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/ohmd/oh_device.c:	out_relation->pose.orientation = quat;
+drivers/ohmd/oh_device.c:	out_relation->pose.position = pos;
+drivers/ohmd/oh_device.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
+drivers/ohmd/oh_device.c:		out_relation->relation_flags = (enum xrt_space_relation_flags)(out_relation->relation_flags |
+drivers/ohmd/oh_device.c:		out_relation->angular_velocity = ang_vel;
+drivers/ohmd/oh_device.c:		out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/ohmd/oh_device.c:		    out_relation->relation_flags | XRT_SPACE_RELATION_ANGULAR_VELOCITY_VALID_BIT);
+drivers/psvr/psvr_device.c:		out_relation->pose.orientation = psvr->fusion.rot;
+drivers/psvr/psvr_device.c:		out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/psvr/psvr_device.c:	math_quat_normalize(&out_relation->pose.orientation);
+drivers/android/android_sensors.c:	out_relation->pose.orientation = d->fusion.rot;
+drivers/android/android_sensors.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
+drivers/sample/sample_hmd.c:	out_relation->pose = sh->pose;
+drivers/sample/sample_hmd.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
+drivers/simulated/simulated_controller.c:		out_relation->pose = (struct xrt_pose)XRT_POSE_IDENTITY;
+drivers/simulated/simulated_controller.c:		out_relation->relation_flags = 0;
+drivers/simulated/simulated_controller.c:	math_quat_rotate_derivative(&pose.orientation, &angular_velocity, &out_relation->angular_velocity);
+drivers/simulated/simulated_controller.c:	out_relation->pose = pose;
+drivers/simulated/simulated_controller.c:	out_relation->linear_velocity = linear_velocity;
+drivers/simulated/simulated_controller.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/simulated/simulated_hmd.c:	out_relation->pose = dh->pose;
+drivers/simulated/simulated_hmd.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
+drivers/arduino/arduino_device.c:	out_relation->pose.orientation = ad->fusion.rot;
+drivers/arduino/arduino_device.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
+drivers/illixr/illixr_device.cpp:	out_relation->pose = illixr_read_pose();
+drivers/illixr/illixr_device.cpp:	out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/rift_s/rift_s_controller.c:	out_relation->pose = ctrl->pose;
+drivers/rift_s/rift_s_controller.c:	out_relation->linear_velocity.x = 0.0f;
+drivers/rift_s/rift_s_controller.c:	out_relation->linear_velocity.y = 0.0f;
+drivers/rift_s/rift_s_controller.c:	out_relation->linear_velocity.z = 0.0f;
+drivers/rift_s/rift_s_controller.c:	math_quat_rotate_derivative(&ctrl->pose.orientation, &ctrl->fusion.last.gyro, &out_relation->angular_velocity);
+drivers/rift_s/rift_s_controller.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/simula/svr_hmd.c:	out_relation->angular_velocity = (struct xrt_vec3)XRT_VEC3_ZERO;
+drivers/simula/svr_hmd.c:	out_relation->linear_velocity = (struct xrt_vec3)XRT_VEC3_ZERO;
+drivers/simula/svr_hmd.c:	out_relation->pose =
+drivers/simula/svr_hmd.c:	out_relation->relation_flags = XRT_SPACE_RELATION_BITMASK_ALL;
+drivers/ht_ctrl_emu/ht_ctrl_emu.cpp:	math_quat_from_plus_x_z(&plus_x, &plus_z, &out_relation->pose.orientation);
+drivers/ht_ctrl_emu/ht_ctrl_emu.cpp:	out_relation->relation_flags = valid_flags;
+drivers/ht_ctrl_emu/ht_ctrl_emu.cpp:	out_relation->pose.position = ray_joint;
+drivers/ht_ctrl_emu/ht_ctrl_emu.cpp:	math_quat_from_plus_x_z(&out_x_vector, &ray_direction, &out_relation->pose.orientation);
+drivers/ht_ctrl_emu/ht_ctrl_emu.cpp:	out_relation->relation_flags = valid_flags;
+drivers/ht_ctrl_emu/ht_ctrl_emu.cpp:		out_relation->relation_flags = XRT_SPACE_RELATION_BITMASK_NONE;
+drivers/hydra/hydra_driver.c:	out_relation->pose = hd->state.pose;
+drivers/hydra/hydra_driver.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/hydra/hydra_driver.c:	// struct xrt_vec3 pos = out_relation->pose.position;
+drivers/hydra/hydra_driver.c:	// struct xrt_quat quat = out_relation->pose.orientation;
+drivers/euroc/euroc_device.c:		bool pose_tracked = out_relation->relation_flags & pose_bits;
+drivers/euroc/euroc_device.c:			ed->pose = euroc_device_correct_pose_from_kimera(out_relation->pose);
+drivers/euroc/euroc_device.c:			ed->pose = euroc_device_correct_pose_from_basalt(out_relation->pose);
+drivers/euroc/euroc_device.c:			ed->pose = out_relation->pose;
+drivers/euroc/euroc_device.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/daydream/daydream_device.c:	out_relation->pose.orientation = daydream->fusion.rot;
+drivers/daydream/daydream_device.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
+drivers/twrap/twrap_slam.c:			U_ZERO(&out_relation->relation_flags);
+drivers/wmr/wmr_hmd.c:	wh->pose = out_relation->pose;
+drivers/wmr/wmr_hmd.c:	bool pose_tracked = out_relation->relation_flags & pose_bits;
+drivers/wmr/wmr_hmd.c:		wh->pose = wmr_hmd_correct_pose_from_basalt(out_relation->pose);
+drivers/wmr/wmr_hmd.c:		wh->pose = out_relation->pose;
+drivers/wmr/wmr_hmd.c:	out_relation->pose = wh->pose;
+drivers/wmr/wmr_hmd.c:	out_relation->relation_flags = (enum xrt_space_relation_flags)(
+drivers/wmr/wmr_hmd.c:	math_pose_transform(&wh->offset, &out_relation->pose, &out_relation->pose);

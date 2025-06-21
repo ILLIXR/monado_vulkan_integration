@@ -304,6 +304,7 @@ predict_display_time(const struct pacing_app *pa, uint64_t now_ns, uint64_t peri
 	while (val <= last_return_predicted_display(pa) + (period_ns / 2)) {
 		val += period_ns;
 	}
+	// val += period_ns;
 
 	// Have to have enough time to perform app work.
 	// while ((val - app_and_compositor_time_ns) <= now_ns) {

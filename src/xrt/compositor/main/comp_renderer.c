@@ -259,8 +259,14 @@ renderer_build_rendering(struct comp_renderer *r,
 	/*
 	 * Begin
 	 */
+	/*
+		Resets the command buffer and timestamp query pool.
 
-	render_gfx_begin(rr);
+		Begins a fresh Vulkan command buffer recording.
+
+		Records the first GPU timestamp for performance profiling.
+	*/
+	 render_gfx_begin(rr);
 
 
 	/*
@@ -985,6 +991,7 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		comp_target_mark_submit(ct, c->frame.rendering.id, os_monotonic_get_ns());
 
 		renderer_get_view_projection(r);
+		// printf("dispatch_graphics: renderer_get_view_projection\n");
 
 		uint8_t ind = illixr_src_acquire();
 		comp_layer_renderer_draw(r->lr, ind);
@@ -1165,6 +1172,7 @@ do_layers(struct comp_renderer *r,
           const struct comp_layer *layers,
           const uint32_t layer_count)
 {
+	printf("do_layers\n");
 	struct render_viewport_data views[2];
 
 	// Create scratch image and get target views.
@@ -1594,6 +1602,7 @@ dispatch_compute(struct comp_renderer *r, struct render_compute *crc)
 		do_projection_layers(r, crc, layer, lvd, rvd);
 	} else if (layer_count > 0) {
 		do_layers(r, crc, c->base.slot.layers, layer_count);
+		printf("dispatch_compute: do_layers\n");
 
 		do_distortion(r, crc, views);
 	} else {

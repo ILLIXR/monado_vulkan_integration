@@ -156,6 +156,16 @@ u_device_get_view_poses(struct xrt_device *xdev,
                         struct xrt_fov *out_fovs,
                         struct xrt_pose *out_poses);
 
+void
+u_device_get_view_poses_render(struct xrt_device *xdev,
+                        const struct xrt_vec3 *default_eye_relation,
+                        uint64_t at_timestamp_ns,
+                        uint32_t view_count,
+                        struct xrt_space_relation *out_head_relation,
+                        struct xrt_fov *out_fovs,
+						int64_t frame_id,
+                        struct xrt_pose *out_poses);
+
 
 #ifdef __cplusplus
 }

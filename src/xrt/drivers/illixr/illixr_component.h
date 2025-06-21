@@ -21,7 +21,7 @@ extern "C" {
 void *
 illixr_monado_create_plugin(void *pb);
 struct xrt_pose
-illixr_read_pose(void);
+illixr_read_pose(bool render, int64_t frame_id);
 
 void illixr_monado_wait_for_init(void);
 

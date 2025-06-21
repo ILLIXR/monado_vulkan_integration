@@ -101,6 +101,22 @@ ipc_client_hmd_get_tracked_pose(struct xrt_device *xdev,
 }
 
 static void
+ipc_client_hmd_get_tracked_pose_render(struct xrt_device *xdev,
+                                enum xrt_input_name name,
+                                uint64_t at_timestamp_ns,
+								int64_t frame_id,
+                                struct xrt_space_relation *out_relation)
+{
+	ipc_client_hmd_t *ich = ipc_client_hmd(xdev);
+
+	xrt_result_t r =
+	    ipc_call_device_get_tracked_pose_render(ich->ipc_c, ich->device_id, name, at_timestamp_ns, frame_id, out_relation);
+	if (r != XRT_SUCCESS) {
+		IPC_ERROR(ich->ipc_c, "Error calling tracked pose!");
+	}
+}
+
+static void
 ipc_client_hmd_get_view_poses(struct xrt_device *xdev,
                               const struct xrt_vec3 *default_eye_relation,
                               uint64_t at_timestamp_ns,
@@ -134,6 +150,44 @@ ipc_client_hmd_get_view_poses(struct xrt_device *xdev,
 		assert(false && !"Can only handle view_count of 2.");
 	}
 }
+
+static void
+ipc_client_hmd_get_view_poses_render(struct xrt_device *xdev,
+                              const struct xrt_vec3 *default_eye_relation,
+                              uint64_t at_timestamp_ns,
+                              uint32_t view_count,
+                              struct xrt_space_relation *out_head_relation,
+                              struct xrt_fov *out_fovs,
+							  int64_t frame_id,
+                              struct xrt_pose *out_poses)
+{
+	ipc_client_hmd_t *ich = ipc_client_hmd(xdev);
+
+	struct ipc_info_get_view_poses_2 info = {0};
+
+	if (view_count == 2) {
+		xrt_result_t r = ipc_call_device_get_view_poses_2_render( //
+		    ich->ipc_c,                                    //
+		    ich->device_id,                                //
+		    default_eye_relation,                          //
+		    at_timestamp_ns,
+			frame_id,
+		    &info);
+		if (r != XRT_SUCCESS) {
+			IPC_ERROR(ich->ipc_c, "Error calling view poses!");
+		}
+
+		*out_head_relation = info.head_relation;
+		for (int i = 0; i < 2; i++) {
+			out_fovs[i] = info.fovs[i];
+			out_poses[i] = info.poses[i];
+		}
+	} else {
+		IPC_ERROR(ich->ipc_c, "Cannot handle %u view_count, only 2 supported.", view_count);
+		assert(false && !"Can only handle view_count of 2.");
+	}
+}
+
 
 static bool
 ipc_client_hmd_compute_distortion(
@@ -187,7 +241,9 @@ ipc_client_hmd_create(struct ipc_connection *ipc_c, struct xrt_tracking_origin *
 	ich->device_id = device_id;
 	ich->base.update_inputs = ipc_client_hmd_update_inputs;
 	ich->base.get_tracked_pose = ipc_client_hmd_get_tracked_pose;
+	ich->base.get_tracked_pose_render = ipc_client_hmd_get_tracked_pose_render;
 	ich->base.get_view_poses = ipc_client_hmd_get_view_poses;
+	ich->base.get_view_poses_render = ipc_client_hmd_get_view_poses_render;
 	ich->base.compute_distortion = ipc_client_hmd_compute_distortion;
 	ich->base.destroy = ipc_client_hmd_destroy;
 	ich->base.is_form_factor_available = ipc_client_hmd_is_form_factor_available;

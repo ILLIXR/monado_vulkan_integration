@@ -194,6 +194,7 @@ compositor_predict_frame(struct xrt_compositor *xc,
 	uint64_t present_slop_ns = 0;
 	uint64_t desired_present_time_ns = 0;
 	uint64_t predicted_display_time_ns = 0;
+	printf("PREDICT_FRAME - calling comp_target_calc_frame_pacing in comp_compositor_predict_frame\n");
 	comp_target_calc_frame_pacing(   //
 	    c->target,                   //
 	    &frame_id,                   //
@@ -288,6 +289,7 @@ do_graphics_layers(struct comp_compositor *c)
 			left = &layer->sc_array[0]->images[stereo->l.sub.image_index];
 			right = &layer->sc_array[1]->images[stereo->r.sub.image_index];
 
+			COMP_INFO(c, "Calling comp_renderer_set_projection_layer");
 			comp_renderer_set_projection_layer(c->r, i, left, right, data);
 		} break;
 		case XRT_LAYER_STEREO_PROJECTION_DEPTH: {
@@ -306,6 +308,7 @@ do_graphics_layers(struct comp_compositor *c)
 			// printf("Left Image: %d, Left Depth: %d\n", stereo->l.sub.image_index, stereo->l_d.sub.image_index);
 			// printf("Right Image: %d, Right Depth: %d\n", stereo->r.sub.image_index, stereo->r_d.sub.image_index);
 
+			COMP_INFO(c, "Calling comp_renderer_set_projection_depth_layer");
 			comp_renderer_set_projection_depth_layer(c->r, i, left, right, left_depth, right_depth, data);
 		} break;
 		case XRT_LAYER_CYLINDER: {
@@ -400,9 +403,11 @@ compositor_layer_commit(struct xrt_compositor *xc, xrt_graphics_sync_handle_t sy
 	u_graphics_sync_unref(&sync_handle);
 
 	if (!c->settings.use_compute) {
+		COMP_INFO(c, "Using graphics layers renderer");
 		do_graphics_layers(c);
 	}
 
+	COMP_INFO(c, "Calling comp_renderer_draw");
 	comp_renderer_draw(c->r);
 
 	u_frame_times_widget_push_sample(&c->compositor_frame_times, os_monotonic_get_ns());

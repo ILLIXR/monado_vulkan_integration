@@ -15,6 +15,7 @@
 #include "util/u_device.h"
 
 #include "multi.h"
+#include <stdio.h>
 
 
 DEBUG_GET_ONCE_LOG_OPTION(multi_log, "MULTI_LOG", U_LOGGING_WARN)
@@ -92,6 +93,7 @@ get_tracked_pose(struct xrt_device *xdev,
 	struct xrt_space_relation tracker_relation;
 
 	xrt_device_get_tracked_pose(tracker, tracker_input_name, at_timestamp_ns, &tracker_relation);
+	printf("multi/multi.c : get_tracked_pose1: xrt_device_get_tracked_pose\n");
 
 	switch (d->override_type) {
 	case XRT_TRACKING_OVERRIDE_DIRECT: {
@@ -102,7 +104,7 @@ get_tracked_pose(struct xrt_device *xdev,
 
 		struct xrt_space_relation target_relation;
 		xrt_device_get_tracked_pose(target, name, at_timestamp_ns, &target_relation);
-
+		printf("multi/multi.c : get_tracked_pose2: xrt_device_get_tracked_pose\n");
 
 		// just use the origin of the tracker space as reference frame
 		struct xrt_space_relation in_target_space;
@@ -148,6 +150,7 @@ get_hand_tracking(struct xrt_device *xdev,
 	struct xrt_device *tracker = d->tracking_override.tracker;
 	struct xrt_space_relation tracker_relation;
 	xrt_device_get_tracked_pose(tracker, d->tracking_override.input_name, *out_timestamp_ns, &tracker_relation);
+	printf("multi/multi.c : get_hand_tracking : xrt_device_get_tracked_pose\n");
 
 
 	switch (d->override_type) {
@@ -199,6 +202,7 @@ get_view_poses(struct xrt_device *xdev,
 	 * like if the state-tracker called this function.
 	 */
 	xrt_device_get_tracked_pose(xdev, XRT_INPUT_GENERIC_HEAD_POSE, at_timestamp_ns, out_head_relation);
+	printf("multi/multi.c : get_view_poses : xrt_device_get_tracked_pose\n");
 }
 
 static bool

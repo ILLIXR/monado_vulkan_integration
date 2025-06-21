@@ -103,7 +103,8 @@ comp_window_direct_get_primary_display_mode(struct comp_target_swapchain *cts, V
 
 	int chosen_mode = 0;
 
-	int desired_mode = ct->c->settings.desired_mode;
+	// int desired_mode = ct->c->settings.desired_mode;
+	int desired_mode = 0;
 	if (desired_mode + 1 > (int)mode_count) {
 		COMP_ERROR(ct->c,
 		           "Requested mode index %d, but max is %d. Falling "
@@ -132,6 +133,7 @@ comp_window_direct_get_primary_display_mode(struct comp_target_swapchain *cts, V
 	           (float)props.parameters.refreshRate / 1000.);
 
 	ct->c->settings.nominal_frame_interval_ns = new_frame_interval;
+	// ct->c->settings.nominal_frame_interval_ns = (int64_t)(1000. * 1000. * 1000. * 1000. / 90);
 
 	free(mode_properties);
 

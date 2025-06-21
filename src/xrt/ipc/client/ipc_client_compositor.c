@@ -522,6 +522,7 @@ ipc_compositor_wait_frame(struct xrt_compositor *xc,
 	uint64_t predicted_display_time = 0;
 	uint64_t predicted_display_period = 0;
 
+	printf("WAIT_FRAME - calling ipc_call_compositor_predict_frame in ipc_compositor_wait_frame\n");
 	IPC_CALL_CHK(ipc_call_compositor_predict_frame( //
 	    icc->ipc_c,                                 // Connection
 	    &frame_id,                                  // Frame id

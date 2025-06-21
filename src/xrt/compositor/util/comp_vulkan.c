@@ -187,6 +187,15 @@ create_instance(struct vk_bundle *vk, struct comp_vulkan_arguments *vk_args) {
 	    .ppEnabledExtensionNames = u_string_list_get_data(instance_ext_list),
 	};
 
+	const char* validation_layers[] = {
+		"VK_LAYER_KHRONOS_validation",
+		"VK_LAYER_LUNARG_screenshot"
+	};
+	uint32_t validation_layer_count = sizeof(validation_layers) / sizeof(validation_layers[0]);
+
+	instance_info.enabledLayerCount   = validation_layer_count;
+	instance_info.ppEnabledLayerNames = validation_layers;
+
 	ret = vk->vkCreateInstance(&instance_info, NULL, &vk->instance);
 	if (ret != VK_SUCCESS) {
 		VK_ERROR_RET(vk, "vkCreateInstance", "Failed to create Vulkan instance", ret);

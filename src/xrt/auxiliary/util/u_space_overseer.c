@@ -21,6 +21,7 @@
 
 #include <assert.h>
 #include <pthread.h>
+#include <stdio.h>
 
 
 /*
@@ -180,6 +181,7 @@ push_then_traverse(struct xrt_relation_chain *xrc, struct u_space *space, uint64
 
 		struct xrt_space_relation xsr;
 		xrt_device_get_tracked_pose(space->pose.xdev, space->pose.xname, at_timestamp_ns, &xsr);
+		// printf("u_space_overseer.c : push_then_traverse : xrt_device_get_tracked_pose\n");
 		m_relation_chain_push_relation(xrc, &xsr);
 	} break;
 	case U_SPACE_TYPE_OFFSET: m_relation_chain_push_pose_if_not_identity(xrc, &space->offset.pose); break;
@@ -220,6 +222,7 @@ traverse_then_push_inverse(struct xrt_relation_chain *xrc, struct u_space *space
 
 		struct xrt_space_relation xsr;
 		xrt_device_get_tracked_pose(space->pose.xdev, space->pose.xname, at_timestamp_ns, &xsr);
+		// printf("u_space_overseer.c traverse_then_push_inverse : xrt_device_get_tracked_pose\n");
 		m_relation_chain_push_inverted_relation(xrc, &xsr);
 	} break;
 	case U_SPACE_TYPE_OFFSET: m_relation_chain_push_inverted_pose_if_not_identity(xrc, &space->offset.pose); break;

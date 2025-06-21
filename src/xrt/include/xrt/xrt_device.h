@@ -11,6 +11,8 @@
 #pragma once
 
 #include "xrt/xrt_defines.h"
+#include <assert.h>
+#include <stdio.h>
 
 
 #ifdef __cplusplus
@@ -295,6 +297,12 @@ struct xrt_device
 	                         enum xrt_input_name name,
 	                         uint64_t at_timestamp_ns,
 	                         struct xrt_space_relation *out_relation);
+					
+	void (*get_tracked_pose_render)(struct xrt_device *xdev,
+	                         enum xrt_input_name name,
+	                         uint64_t at_timestamp_ns,
+							 int64_t frame_id,
+	                         struct xrt_space_relation *out_relation);
 
 	/*!
 	 * @brief Get relationship of hand joints to the tracking origin space as
@@ -379,6 +387,15 @@ struct xrt_device
 	                       struct xrt_space_relation *out_head_relation,
 	                       struct xrt_fov *out_fovs,
 	                       struct xrt_pose *out_poses);
+
+	void (*get_view_poses_render)(struct xrt_device *xdev,
+	                       const struct xrt_vec3 *default_eye_relation,
+	                       uint64_t at_timestamp_ns,
+	                       uint32_t view_count,
+	                       struct xrt_space_relation *out_head_relation,
+	                       struct xrt_fov *out_fovs,
+						   int64_t frame_id,
+	                       struct xrt_pose *out_poses);
 	/**
 	 * Compute the distortion at a single point.
 	 *
@@ -443,6 +460,16 @@ xrt_device_get_tracked_pose(struct xrt_device *xdev,
 	xdev->get_tracked_pose(xdev, name, at_timestamp_ns, out_relation);
 }
 
+static inline void
+xrt_device_get_tracked_pose_render(struct xrt_device *xdev,
+                            enum xrt_input_name name,
+                            uint64_t at_timestamp_ns,
+							int64_t frame_id,
+                            struct xrt_space_relation *out_relation)
+{
+	xdev->get_tracked_pose_render(xdev, name, at_timestamp_ns, frame_id, out_relation);
+}
+
 /*!
  * Helper function for @ref xrt_device::get_hand_tracking.
  *
@@ -491,6 +518,20 @@ xrt_device_get_view_poses(struct xrt_device *xdev,
 	xdev->get_view_poses(xdev, default_eye_relation, at_timestamp_ns, view_count, out_head_relation, out_fovs,
 	                     out_poses);
 }
+
+static inline void
+xrt_device_get_view_poses_render(struct xrt_device *xdev,
+                          const struct xrt_vec3 *default_eye_relation,
+                          uint64_t at_timestamp_ns,
+                          uint32_t view_count,
+                          struct xrt_space_relation *out_head_relation,
+                          struct xrt_fov *out_fovs,
+						  int64_t frame_id,
+                          struct xrt_pose *out_poses)
+{
+	xdev->get_view_poses_render(xdev, default_eye_relation, at_timestamp_ns, view_count, out_head_relation, out_fovs, frame_id, out_poses);
+}
+
 
 /*!
  * Helper function for @ref xrt_device::compute_distortion.

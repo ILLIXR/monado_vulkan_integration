@@ -546,6 +546,7 @@ multi_compositor_predict_frame(struct xrt_compositor *xc,
 	uint64_t now_ns = os_monotonic_get_ns();
 	os_mutex_lock(&mc->msc->list_and_timing_lock);
 
+	printf("PREDICT_FRAME_APP - calling u_pa_predict in multi_compositor_predict_frame\n");
 	u_pa_predict(                         //
 	    mc->upa,                          //
 	    now_ns,                           //
@@ -553,6 +554,11 @@ multi_compositor_predict_frame(struct xrt_compositor *xc,
 	    out_wake_time_ns,                 //
 	    out_predicted_display_time_ns,    //
 	    out_predicted_display_period_ns); //
+
+	// printf("Predicted APP GPU time: %u ns\n", *out_predicted_display_time_ns);
+	// COMP_SPEW(mc, "PREDICT_FRAME - frame_id=%" PRId64 ", wake_time_ns=%" PRIu64
+	//         ", predicted_display_time_ns=%" PRIu64 ", predicted_display_period_ns=%" PRIu64,
+	//         *out_frame_id, *out_wake_time_ns, *out_predicted_display_time_ns, *out_predicted_display_period_ns);
 
 	os_mutex_unlock(&mc->msc->list_and_timing_lock);
 
@@ -599,6 +605,7 @@ multi_compositor_wait_frame(struct xrt_compositor *xc,
 	uint64_t wake_up_time_ns = 0;
 	uint64_t predicted_gpu_time_ns = 0;
 
+	printf("WAIT_FRAME - calling xrt_comp_predict_frame in multi_compositor_wait_frame\n");
 	xrt_comp_predict_frame(               //
 	    xc,                               //
 	    &frame_id,                        //

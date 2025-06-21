@@ -88,6 +88,11 @@ predict_next_frame_present_time(struct fake_timing *ft, uint64_t now_ns)
 		predicted_present_time_ns += ft->frame_period_ns;
 	}
 
+	// // Reduce the render rate to a fraction of the frame rate to test reprojection
+	// if (predicted_present_time_ns - ft->last_present_time_ns < 2 * ft->frame_period_ns) {
+	// 	predicted_present_time_ns += ft->frame_period_ns;
+	// }
+
 	return predicted_present_time_ns;
 }
 
@@ -124,6 +129,7 @@ pc_predict(struct u_pacing_compositor *upc,
            uint64_t *out_predicted_display_period_ns,
            uint64_t *out_min_display_period_ns)
 {
+	printf("PREDICT_FRAME - executing pc_predict in u_pc_fake\n");
 	struct fake_timing *ft = fake_timing(upc);
 
 	int64_t frame_id = ft->frame_id_generator++;
@@ -287,7 +293,7 @@ u_pc_fake_create(uint64_t estimated_frame_period_ns, uint64_t now_ns, struct u_p
 	    .max = +40.0,
 	};
 
-	// 20% of the frame time.
+	// 20% of the frame time. THIS IS PROBABLY TOO SMALL!
 	ft->comp_time_ns = get_percent_of_time(estimated_frame_period_ns, 20);
 
 	// Or at least a certain amount of time.

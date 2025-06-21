@@ -416,3 +416,25 @@ u_device_get_view_poses(struct xrt_device *xdev,
 		u_device_get_view_pose(default_eye_relation, i, &out_poses[i]);
 	}
 }
+
+void
+u_device_get_view_poses_render(struct xrt_device *xdev,
+                        const struct xrt_vec3 *default_eye_relation,
+                        uint64_t at_timestamp_ns,
+                        uint32_t view_count,
+                        struct xrt_space_relation *out_head_relation,
+                        struct xrt_fov *out_fovs,
+						int64_t frame_id,
+                        struct xrt_pose *out_poses)
+
+{
+	xrt_device_get_tracked_pose_render(xdev, XRT_INPUT_GENERIC_HEAD_POSE, at_timestamp_ns, frame_id, out_head_relation);
+
+	for (uint32_t i = 0; i < view_count && i < ARRAY_SIZE(xdev->hmd->views); i++) {
+		out_fovs[i] = xdev->hmd->distortion.fov[i];
+	}
+
+	for (uint32_t i = 0; i < view_count; i++) {
+		u_device_get_view_pose(default_eye_relation, i, &out_poses[i]);
+	}
+}

@@ -620,6 +620,9 @@ render_gfx_end_target(struct render_gfx *rr)
 	vk->vkCmdEndRenderPass(rr->r->cmd);
 }
 
+/*
+	Make sure that for each eye (view), the drawing is done with the correct viewport and scissor in the framebuffer.
+*/
 void
 render_gfx_begin_view(struct render_gfx *rr, uint32_t view, struct render_viewport_data *viewport_data)
 {

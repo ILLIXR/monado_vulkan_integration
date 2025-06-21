@@ -357,6 +357,7 @@ static void
 do_update_timings_vblank_thread(struct comp_target_swapchain *cts)
 {
 	if (!cts->vblank.has_started) {
+		COMP_INFO(cts->base.c, "VBlank event thread not started yet, skipping update.");
 		return;
 	}
 
@@ -366,6 +367,8 @@ do_update_timings_vblank_thread(struct comp_target_swapchain *cts)
 	last_vblank_ns = cts->vblank.last_vblank_ns;
 	cts->vblank.last_vblank_ns = 0;
 	os_thread_helper_unlock(&cts->vblank.event_thread);
+
+	COMP_SPEW(cts->base.c, "Updating vblank timing with last_vblank_ns: %" PRIu64, last_vblank_ns);
 
 	if (last_vblank_ns) {
 		u_pc_update_vblank_from_display_control(cts->upc, last_vblank_ns);
@@ -500,7 +503,7 @@ run_vblank_event_thread(void *ptr)
 	struct comp_target *ct = (struct comp_target *)ptr;
 	struct comp_target_swapchain *cts = (struct comp_target_swapchain *)ct;
 
-	COMP_DEBUG(ct->c, "Surface thread starting");
+	COMP_INFO(ct->c, "Surface thread starting");
 
 	os_thread_helper_name(&cts->vblank.event_thread, "VBlank Events");
 	U_TRACE_SET_THREAD_NAME("VBlank Events");
@@ -547,9 +550,11 @@ static bool
 create_vblank_event_thread(struct comp_target *ct)
 {
 	struct comp_target_swapchain *cts = (struct comp_target_swapchain *)ct;
-	if (cts->display == VK_NULL_HANDLE) {
-		return true;
-	}
+	// impossible
+	// if (cts->display == VK_NULL_HANDLE) {
+	// 	COMP_INFO(ct->c, "No display handle, not starting vblank event thread.");
+	// 	return true;
+	// }
 
 	int thread_ret = os_thread_helper_start(&cts->vblank.event_thread, run_vblank_event_thread, ct);
 	if (thread_ret != 0) {
@@ -557,7 +562,7 @@ create_vblank_event_thread(struct comp_target *ct)
 		return false;
 	}
 
-	COMP_DEBUG(ct->c, "Started vblank (first pixel out) event thread.");
+	COMP_INFO(ct->c, "Started vblank (first pixel out) event thread.");
 
 	// Set this here.
 	cts->vblank.has_started = true;
@@ -631,9 +636,11 @@ comp_target_swapchain_create_images(struct comp_target *ct,
 	// Some platforms really don't like the pacing_compositor code.
 	bool use_display_timing_if_available = cts->timing_usage == COMP_TARGET_USE_DISPLAY_IF_AVAILABLE;
 	if (cts->upc == NULL && use_display_timing_if_available && vk->has_GOOGLE_display_timing) {
+		COMP_INFO(ct->c, "Using display timing for pacing compositor.");
 		u_pc_display_timing_create(ct->c->settings.nominal_frame_interval_ns,
 		                           &U_PC_DISPLAY_TIMING_CONFIG_DEFAULT, &cts->upc);
 	} else if (cts->upc == NULL) {
+		COMP_INFO(ct->c, "Using fake pacing compositor.");
 		u_pc_fake_create(ct->c->settings.nominal_frame_interval_ns, now_ns, &cts->upc);
 	}
 
@@ -800,7 +807,7 @@ comp_target_swapchain_create_images(struct comp_target *ct,
 		if (cts->vblank.has_started) {
 			// Already running.
 		} else if (create_vblank_event_thread(ct)) {
-			COMP_INFO(ct->c, "Started vblank event thread!");
+			COMP_INFO(ct->c, "Not started vblank event thread!");
 		} else {
 			COMP_ERROR(ct->c, "Failed to register vblank event");
 		}
@@ -921,6 +928,7 @@ comp_target_swapchain_calc_frame_pacing(struct comp_target *ct,
 	uint64_t min_display_period_ns = 0;
 	uint64_t now_ns = os_monotonic_get_ns();
 
+	printf("PREDICT_FRAME - calling u_pc_predict in comp_target_swapchain_calc_frame_pacing\n");
 	u_pc_predict(cts->upc,                     //
 	             now_ns,                       //
 	             &frame_id,                    //
@@ -938,6 +946,10 @@ comp_target_swapchain_calc_frame_pacing(struct comp_target *ct,
 	*out_desired_present_time_ns = desired_present_time_ns;
 	*out_predicted_display_time_ns = predicted_display_time_ns;
 	*out_present_slop_ns = present_slop_ns;
+
+	COMP_SPEW(cts->base.c,
+	           "predicted_display_time_ns=%" PRIu64 ", predicted_display_period_ns=%" PRIu64,
+	           predicted_display_time_ns, predicted_display_period_ns);
 }
 
 static void

@@ -92,7 +92,9 @@ public:
 	std::shared_ptr<display_provider> ds;
 	switchboard::writer<switchboard::event_wrapper<time_point>> _m_vsync;
 
-	pose_type last_pose;
+	int pose_count = 0;
+	std::queue<fast_pose_type> last_poses;
+	fast_pose_type last_pose;
 };
 
 static illixr_plugin *illixr_plugin_obj = nullptr;
@@ -112,13 +114,14 @@ extern "C" void illixr_monado_wait_for_init(void) {
 }
 
 extern "C" struct xrt_pose
-illixr_read_pose()
+illixr_read_pose(bool render, int64_t frame_id)
 {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 
 	if (!illixr_plugin_obj->sb_pose->fast_pose_reliable()) {
 		std::cerr << "Pose not reliable yet; returning best guess" << std::endl;
 	}
+
 	struct xrt_pose ret;
 	const fast_pose_type fast_pose = illixr_plugin_obj->sb_pose->get_fast_pose();
 	const pose_type curr_pose = fast_pose.pose;
@@ -129,6 +132,12 @@ illixr_read_pose()
 	ret.position.x = curr_pose.position.x();
 	ret.position.y = curr_pose.position.y();
 	ret.position.z = curr_pose.position.z();
+
+	
+	if (render && ++(illixr_plugin_obj->pose_count) % 1 == 0) {
+		illixr_plugin_obj->last_poses.push(fast_pose);
+		std::cout << PREFIX << "Added one render pose" << std::endl;
+	}
 
 	return ret;
 }
@@ -230,7 +239,7 @@ extern "C" int8_t illixr_src_acquire() {
 
 extern "C" void illixr_src_release(int8_t buffer_ind, struct xrt_pose l_pose, struct xrt_pose r_pose) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
-	pose_type pose {time_point{},
+	pose_type pose {time_point{}, time_point{},
 					Eigen::Vector3f {(l_pose.position.x + r_pose.position.x) / 2, (l_pose.position.y + r_pose.position.y) / 2, (l_pose.position.z + r_pose.position.z) / 2},
 					Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
 					};
@@ -250,12 +259,64 @@ extern "C" int illixr_sleep_time() {
 extern "C" void illixr_tw_update_uniforms(xrt_pose l_pose, xrt_pose r_pose) {
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 
+	// if (illixr_plugin_obj->start_count) {
+	// 	std::cout << PREFIX << "pose_count: " << illixr_plugin_obj->pose_count << std::endl;
+	// 	if (illixr_plugin_obj->pose_count != 0) {
+	// 		std::abort(); // This is a temporary fix to ensure that we don't have multiple poses in flight.
+	// 	}
+		// illixr_plugin_obj->poses.pop();
+	std::cout << PREFIX << "last_poses.size(): " << illixr_plugin_obj->last_poses.size() << std::endl;
+	while (illixr_plugin_obj->last_poses.size() >1) {
+		illixr_plugin_obj->last_poses.pop();
+	}
+	if (!illixr_plugin_obj->last_poses.empty()) {
+		fast_pose_type curr_pose = illixr_plugin_obj->last_poses.front();
+		illixr_plugin_obj->last_poses.pop();
+		if (std::abs(l_pose.orientation.x - curr_pose.pose.orientation.x()) < 0.00001f &&
+			std::abs(l_pose.orientation.y - curr_pose.pose.orientation.y()) < 0.00001f &&
+			std::abs(l_pose.orientation.z - curr_pose.pose.orientation.z()) < 0.00001f &&
+			std::abs(l_pose.orientation.w - curr_pose.pose.orientation.w()) < 0.00001f &&
+			std::abs(l_pose.position.x - curr_pose.pose.position.x()) < 0.00001f &&
+			std::abs(l_pose.position.y - curr_pose.pose.position.y()) < 0.00001f &&
+			std::abs(l_pose.position.z - curr_pose.pose.position.z()) < 0.00001f
+		) {
+
+			std::cout << PREFIX << "Projection layer pose is the same as last pose!!!" << std::endl;
+		} else {
+			std::cout << PREFIX << "Projection layer pose is different from last pose!!!"
+					<< "\ndifference in pos.x " << std::abs(l_pose.position.x - curr_pose.pose.position.x())
+					<< "\ndifference in pos.y " << std::abs(l_pose.position.y - curr_pose.pose.position.y())
+					<< "\ndifference in pos.z " << std::abs(l_pose.position.z - curr_pose.pose.position.z())
+					<< "\ndifference in quat.w " << std::abs(l_pose.orientation.w - curr_pose.pose.orientation.w())
+					<< "\ndifference in quat.x " << std::abs(l_pose.orientation.x - curr_pose.pose.orientation.x())
+					<< "\ndifference in quat.y " << std::abs(l_pose.orientation.y - curr_pose.pose.orientation.y())
+					<< "\ndifference in quat.z " << std::abs(l_pose.orientation.z - curr_pose.pose.orientation.z()) << std::endl;
+		}
+
+		if (!illixr_plugin_obj->offload_frames) {
+			pose_type pose {curr_pose.pose.cam_time, curr_pose.pose.imu_time,
+						Eigen::Vector3f {(l_pose.position.x + r_pose.position.x) / 2, (l_pose.position.y + r_pose.position.y) / 2, (l_pose.position.z + r_pose.position.z) / 2},
+						Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
+						};
+			fast_pose_type fast_pose {pose, time_point{}, curr_pose.predict_target_time};
+			illixr_plugin_obj->last_pose = fast_pose;
+			return;
+		}
+	}
+
 	if (!illixr_plugin_obj->offload_frames) {
-		pose_type pose {time_point{},
+		// pose_type pose {curr_pose.pose.cam_time, curr_pose.pose.imu_time,
+		// 			Eigen::Vector3f {(l_pose.position.x + r_pose.position.x) / 2, (l_pose.position.y + r_pose.position.y) / 2, (l_pose.position.z + r_pose.position.z) / 2},
+		// 			Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
+		// 			};
+		// fast_pose_type fast_pose {pose, time_point{}, curr_pose.predict_target_time};
+		pose_type pose {time_point{}, time_point{},
 					Eigen::Vector3f {(l_pose.position.x + r_pose.position.x) / 2, (l_pose.position.y + r_pose.position.y) / 2, (l_pose.position.z + r_pose.position.z) / 2},
 					Eigen::Quaternionf {(l_pose.orientation.w), (l_pose.orientation.x), (l_pose.orientation.y), (l_pose.orientation.z)}
 					};
-		illixr_plugin_obj->last_pose = pose;
+		fast_pose_type fast_pose {pose, time_point{}, time_point{}};
+		illixr_plugin_obj->last_pose = fast_pose;
+		// std::cout << "illixr_tw_update_uniforms cam_time: " << l_pose.cam_time << ", imu_time: " << l_pose.imu_time << ", target_time: " << l_pose.target_time << std::endl;
 	}
 }
 
@@ -263,7 +324,7 @@ extern "C" void illixr_tw_record_command_buffer(VkCommandBuffer commandBuffer, V
 	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
 
 	if (!illixr_plugin_obj->offload_frames) {
-		illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->last_pose);
+		illixr_plugin_obj->sb_timewarp->update_uniforms(illixr_plugin_obj->last_pose, left);
 		illixr_plugin_obj->sb_timewarp->record_command_buffer(commandBuffer, framebuffer, buffer_ind, left);
 	}
 }
@@ -273,6 +334,6 @@ extern "C" void illixr_publish_vsync_estimate(uint64_t display_time_ns) {
 
 	if (!illixr_plugin_obj->offload_frames) {
 		auto relative_time = time_point{time_point{std::chrono::nanoseconds(display_time_ns)} - illixr_plugin_obj->sb_clock->start_time()};
-	  illixr_plugin_obj->_m_vsync.put(illixr_plugin_obj->_m_vsync.allocate(relative_time));
+		illixr_plugin_obj->_m_vsync.put(illixr_plugin_obj->_m_vsync.allocate(relative_time));
 	}
 }

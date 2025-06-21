@@ -961,10 +961,12 @@ submit_projection_layer(struct oxr_session *sess,
 	for (uint32_t i = 0; i < swapchain_count; i++) {
 		scs[i] = XRT_CAST_OXR_HANDLE_TO_PTR(struct oxr_swapchain *, proj->views[i].subImage.swapchain);
 		pose_ptr = (struct xrt_pose *)&proj->views[i].pose;
+		// oxr_log(log, "submit_projection_layer, pose_ptr.cam_time: %ld, pose_ptr.imu_time: %ld, pose_ptr.target_time: %ld", pose_ptr->cam_time, pose_ptr->imu_time, pose_ptr->target_time);
 
 		if (!handle_space(log, sess, spc, pose_ptr, inv_offset, oxr_timestamp, &pose[i])) {
 			return XR_SUCCESS;
 		}
+		// oxr_log(log, "submit_projection_layer, handle_space, pose[i].cam_time: %ld, pose[i].imu_time: %ld, pose[i].target_time: %ld", pose[i].cam_time, pose[i].imu_time, pose[i].target_time);
 	}
 
 	if (spc->space_type == OXR_SPACE_TYPE_REFERENCE_VIEW) {
@@ -988,6 +990,7 @@ submit_projection_layer(struct oxr_session *sess,
 	data.stereo.r.original_pose = *((struct xrt_pose*) &proj->views[1].pose);
 	fill_in_sub_image(scs[0], &proj->views[0].subImage, &data.stereo.l.sub);
 	fill_in_sub_image(scs[1], &proj->views[1].subImage, &data.stereo.r.sub);
+	// oxr_log(log, "submit_projection_layer, l.pose.cam_time: %ld, l.pose.imu_time: %ld, l.pose.target_time: %ld", data.stereo.l.pose.cam_time, data.stereo.l.pose.imu_time, data.stereo.l.pose.target_time);
 
 #ifdef XRT_FEATURE_OPENXR_LAYER_DEPTH
 	const XrCompositionLayerDepthInfoKHR *d_l = OXR_GET_INPUT_FROM_CHAIN(
@@ -1257,6 +1260,8 @@ submit_equirect2_layer(struct oxr_session *sess,
 XrResult
 oxr_session_frame_end(struct oxr_logger *log, struct oxr_session *sess, const XrFrameEndInfo *frameEndInfo)
 {
+	// oxr_log(log, "oxr_session_frame_end");
+	// printf("oxr_session_frame_end called\n");
 	/*
 	 * Call order.
 	 */
