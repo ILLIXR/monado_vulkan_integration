@@ -310,6 +310,7 @@ predict_display_time(const struct pacing_app *pa, uint64_t now_ns, uint64_t peri
 	// while ((val - app_and_compositor_time_ns) <= now_ns) {
 	// 	val += period_ns;
 	// }
+	// if (pa->frame_counter > 10) val += 5000000000ULL; // Add some extra time to make sure we have enough time to do the work.
 
 	return val;
 }

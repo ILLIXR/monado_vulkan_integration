@@ -89,7 +89,7 @@ os_monotonic_get_ns(void);
  * @ingroup aux_os_time
  */
 static inline void
-os_nanosleep(int64_t nsec);
+os_nanosleep(uint64_t nsec);
 
 /*!
  * A structure for storing state as needed for more precise sleeping, mostly for compositor use.
@@ -123,7 +123,7 @@ os_precise_sleeper_deinit(struct os_precise_sleeper *ops);
  * @public @memberof os_precise_sleeper
  */
 static inline void
-os_precise_sleeper_nanosleep(struct os_precise_sleeper *ops, int32_t nsec);
+os_precise_sleeper_nanosleep(struct os_precise_sleeper *ops, uint64_t nsec);
 
 #if defined(XRT_HAVE_TIMESPEC) || defined(XRT_DOXYGEN)
 /*!
@@ -192,7 +192,7 @@ os_ns_per_qpc_tick_get(void);
  */
 
 static inline void
-os_nanosleep(int64_t nsec)
+os_nanosleep(uint64_t nsec)
 {
 #if defined(XRT_OS_LINUX)
 	struct timespec spec;
@@ -233,7 +233,7 @@ os_precise_sleeper_deinit(struct os_precise_sleeper *ops)
 }
 
 static inline void
-os_precise_sleeper_nanosleep(struct os_precise_sleeper *ops, int32_t nsec)
+os_precise_sleeper_nanosleep(struct os_precise_sleeper *ops, uint64_t nsec)
 {
 #if defined(XRT_OS_WINDOWS)
 	timeBeginPeriod(1);

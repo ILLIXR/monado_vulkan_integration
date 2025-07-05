@@ -357,7 +357,7 @@ renderer_build_rendering(struct comp_renderer *r,
 		render_gfx_distortion(rr);
 	}
 
-	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, buffer_ind, 1);
+	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, buffer_ind, 1, r->fences[r->acquired_buffer]);
 
 	render_gfx_end_view(rr);
 
@@ -375,7 +375,7 @@ renderer_build_rendering(struct comp_renderer *r,
 		render_gfx_distortion(rr);
 	}
 
-	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, buffer_ind, 0);
+	illixr_tw_record_command_buffer(rr->r->cmd, rr->rtr->framebuffer, buffer_ind, 0, r->fences[r->acquired_buffer]);
 
 	render_gfx_end_view(rr);
 
@@ -618,7 +618,7 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 			offset[2 * i + 1] = r->lr->framebuffers[i].depth_offset;
 		}
 
-
+		printf("ILLIXR: Initializing timewarp with %d buffers.\n", OFFLOAD_BUFFER_POOL_SIZE);
 		illixr_initialize_timewarp(r->rtr_array[0].render_pass, 0, r->lr->framebuffers[0].image_extent, images, image_view, device_memory, size, offset, OFFLOAD_BUFFER_POOL_SIZE);
 	}
 
@@ -759,6 +759,11 @@ renderer_submit_queue(struct comp_renderer *r, VkCommandBuffer cmd, VkPipelineSt
 
 	// This buffer now have a pending fence.
 	r->fenced_buffer = r->acquired_buffer;
+
+	// // Wait for the rendering to complete
+	// renderer_wait_for_last_fence(r);
+	// assert(r->fenced_buffer < 0);
+	// printf("ILLIXR: renderer_submit_queue returned with fence noticed.\n");
 }
 
 static void
@@ -993,7 +998,15 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 		renderer_get_view_projection(r);
 		// printf("dispatch_graphics: renderer_get_view_projection\n");
 
+		// Acquire a buffer for rendering.
 		uint8_t ind = illixr_src_acquire();
+		// while (ind == -1) {
+		// 	ind = illixr_src_acquire();
+		// 	printf("[COMP_RENDERER] Waiting for a buffer to be available.\n");
+		// 	usleep(1000000);
+		// }
+		// printf("[COMP_RENDERER] Acquired buffer %d for rendering.\n", ind);
+		// Record the rendering command for the stero frames.
 		comp_layer_renderer_draw(r->lr, ind);
 
 		VkSampler clamp_to_border_black = r->c->nr.samplers.clamp_to_border_black;
@@ -1013,6 +1026,9 @@ dispatch_graphics(struct comp_renderer *r, struct render_gfx *rr)
 
 		renderer_build_rendering(r, rr, rtr, src_samplers, src_image_views, src_norm_rects, ind);
 		renderer_submit_queue(r, rr->r->cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+		// illixr_save_frame(r->fences[r->acquired_buffer]);
+
+		printf("[COMP_RENDERER] Frame %d being saved.\n", c->frame.rendering.id - 1);
 
 		// If the frame isn't offloaded, the images need to be available until warping is complete.
 		if (!illixr_offload_frames()) {

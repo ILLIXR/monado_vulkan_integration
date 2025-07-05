@@ -489,7 +489,7 @@ ipc_handle_compositor_predict_frame(volatile struct ipc_client_state *ics,
 	ipc_server_activate_session(ics);
 
 	uint64_t gpu_time_ns = 0;
-	printf("PREDICT_FRAME - calling xrt_comp_predict_frame in ipc_handle_compositor_predict_frame\n");
+	// printf("PREDICT_FRAME - calling xrt_comp_predict_frame in ipc_handle_compositor_predict_frame\n");
 	return xrt_comp_predict_frame(        //
 	    ics->xc,                          //
 	    out_frame_id,                     //
@@ -829,7 +829,7 @@ ipc_handle_compositor_layer_sync(volatile struct ipc_client_state *ics,
 	/*
 	 * Transfer data to underlying compositor.
 	 */
-
+	// This is where the app tells the compoisitor of the layers that it has drawn.
 	xrt_comp_layer_begin(ics->xc, &copy.data);
 
 	_update_layers(ics, ics->xc, &copy);

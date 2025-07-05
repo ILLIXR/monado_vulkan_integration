@@ -28,6 +28,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #ifdef XRT_GRAPHICS_SYNC_HANDLE_IS_FD
 #include <unistd.h>
@@ -463,10 +464,10 @@ multi_main_loop(struct multi_system_compositor *msc)
 		    &predicted_display_time_ns,    //
 		    &predicted_display_period_ns); //
 
-		// printf("Predicted GPU time: %u ns\n", predicted_gpu_time_ns);
-		// printf("Predicted Display Time: %u ns\n", predicted_display_time_ns);
-		// printf("Predicted Display Period: %u ns\n", predicted_display_period_ns);
-		// printf("Wake up time: %u ns\n", wake_up_time_ns);
+		// printf("Predicted GPU time: %" PRIu64 " ns\n", predicted_gpu_time_ns);
+		// printf("Predicted Display Time: %" PRIu64 " ns\n", predicted_display_time_ns);
+		// printf("Predicted Display Period: %" PRIu64 " ns\n", predicted_display_period_ns);
+		// printf("Wake up time: %" PRIu64 " ns\n", wake_up_time_ns);
 
 		// ILLIXR: publish predicted swap time to switchboard
 		illixr_publish_vsync_estimate(predicted_display_time_ns);
@@ -475,9 +476,10 @@ multi_main_loop(struct multi_system_compositor *msc)
 		broadcast_timings_to_clients(msc, predicted_display_time_ns);
 
 		// Now we can wait.
-		if (illixr_sleep_time() >= 0) {
-			uint32_t delay = (uint32_t) illixr_sleep_time();
-			os_precise_sleeper_nanosleep(&sleeper, delay);
+		uint64_t sleep_time_ns = illixr_sleep_time();
+		if (illixr_should_sleep() && sleep_time_ns > 0) {
+			printf("ILLIXR: Sleeping for %lu\n", sleep_time_ns);
+			os_precise_sleeper_nanosleep(&sleeper, sleep_time_ns);
 
 			uint64_t now_ns = os_monotonic_get_ns();
 

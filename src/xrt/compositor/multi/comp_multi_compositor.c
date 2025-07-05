@@ -546,7 +546,7 @@ multi_compositor_predict_frame(struct xrt_compositor *xc,
 	uint64_t now_ns = os_monotonic_get_ns();
 	os_mutex_lock(&mc->msc->list_and_timing_lock);
 
-	printf("PREDICT_FRAME_APP - calling u_pa_predict in multi_compositor_predict_frame\n");
+	// printf("PREDICT_FRAME_APP - calling u_pa_predict in multi_compositor_predict_frame\n");
 	u_pa_predict(                         //
 	    mc->upa,                          //
 	    now_ns,                           //

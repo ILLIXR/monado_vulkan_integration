@@ -9,6 +9,7 @@
  */
 
 #include "vk/vk_cmd.h"
+#include <stdio.h>
 
 
 XRT_CHECK_RESULT VkResult

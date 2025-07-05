@@ -60,6 +60,7 @@ u_frame_times_widget_push_sample(struct u_frame_times_widget *widget, uint64_t n
 		}
 		float avg_frametime_s = total_s / ((float)NUM_FRAME_TIMINGS);
 		widget->fps = 1.f / avg_frametime_s;
+		printf("COMPOSITOR RUNNING AT %.2f FPS with AVG_FRAMETIME %.2f s\n", widget->fps, avg_frametime_s);
 	}
 
 	widget->times_ns[widget->index] = new_frame_time;
@@ -68,8 +69,6 @@ u_frame_times_widget_push_sample(struct u_frame_times_widget *widget, uint64_t n
 	assert(widget->index < FPS_WIDGET_NUM_FRAME_TIMES);
 	assert(last_index >= 0);
 	assert(last_index < FPS_WIDGET_NUM_FRAME_TIMES);
-
-	printf("COMPOSITOR RUNNING AT %.2f FPS\n", widget->fps);
 
 	uint64_t diff = widget->times_ns[widget->index] - widget->times_ns[last_index];
 	widget->timings_ms[widget->index] = (float)time_ns_to_ms_f(diff);

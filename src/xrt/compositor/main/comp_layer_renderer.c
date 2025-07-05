@@ -23,12 +23,22 @@ struct comp_layer_vertex
 	float uv[2];
 };
 
+// static const VkClearColorValue background_color_idle = {
+//     .float32 = {0.1f, 0.1f, 0.1f, 1.0f},
+// };
+
+// static const VkClearColorValue background_color_active = {
+//     .float32 = {0.0f, 0.0f, 0.0f, 1.0f},
+// };
+
+/* Bright red idle-background */
 static const VkClearColorValue background_color_idle = {
-    .float32 = {0.1f, 0.1f, 0.1f, 1.0f},
+    .float32 = {1.0f, 0.0f, 0.0f, 1.0f},   // R, G, B, A
 };
 
+/* Bright green active-background */
 static const VkClearColorValue background_color_active = {
-    .float32 = {0.0f, 0.0f, 0.0f, 1.0f},
+    .float32 = {0.0f, 1.0f, 0.0f, 1.0f},
 };
 
 static bool
@@ -981,8 +991,10 @@ comp_layer_renderer_draw(struct comp_layer_renderer *self, int8_t ind)
 	}
 
 	if (self->layer_count == 0) {
+		printf("WARNING: no layers to render\n");
 		_render_stereo(self, vk, cmd_buffer, &background_color_idle, ind);
 	} else {
+		printf("Comp layer renderer draw with %d layers\n", self->layer_count);
 		_render_stereo(self, vk, cmd_buffer, &background_color_active, ind);
 	}
 

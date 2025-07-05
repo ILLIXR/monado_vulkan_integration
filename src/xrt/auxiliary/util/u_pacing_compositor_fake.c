@@ -81,18 +81,26 @@ fake_timing(struct u_pacing_compositor *upc)
 static uint64_t
 predict_next_frame_present_time(struct fake_timing *ft, uint64_t now_ns)
 {
+	// printf("last  = 0x%016" PRIx64 "\n", (uint64_t)ft->last_present_time_ns);
+	// printf("period= 0x%016" PRIx64 "\n", (uint64_t)ft->frame_period_ns);
 	uint64_t time_needed_ns = ft->comp_time_ns;
-	uint64_t predicted_present_time_ns = ft->last_present_time_ns + ft->frame_period_ns;
+	uint64_t predicted_present_time_ns = (uint64_t)ft->last_present_time_ns + (uint64_t)ft->frame_period_ns;
 
 	while (now_ns + time_needed_ns > predicted_present_time_ns) {
-		predicted_present_time_ns += ft->frame_period_ns;
+		predicted_present_time_ns += (uint64_t)ft->frame_period_ns;
 	}
 
 	// // Reduce the render rate to a fraction of the frame rate to test reprojection
 	// if (predicted_present_time_ns - ft->last_present_time_ns < 2 * ft->frame_period_ns) {
 	// 	predicted_present_time_ns += ft->frame_period_ns;
 	// }
+	// printf("predicted_present_time_ns  = 0x%016" PRIx64 "\n", (uint64_t)predicted_present_time_ns);
+	// printf("predicted_present_time_ns  = %" PRIu64 "\n", (uint64_t)predicted_present_time_ns);
+	// uint64_t bump = 30000000000ULL;   // 30 s
+	// predicted_present_time_ns += (uint64_t)bump;
 
+	// printf("PREDICT_FRAME - bump: %" PRIu64 "\n", bump);
+	printf("PREDICT_FRAME - predicted_present_time_ns: %" PRIu64 "\n", (uint64_t)predicted_present_time_ns);
 	return predicted_present_time_ns;
 }
 
@@ -101,6 +109,7 @@ calc_display_time(struct fake_timing *ft, uint64_t present_time_ns)
 {
 	double offset_ms = ft->present_to_display_offset_ms.val;
 	uint64_t offset_ns = time_ms_f_to_ns(offset_ms);
+	// printf("PREDICT_FRAME - offset_ms: %f, offset_ns: %" PRIu64 "\n", offset_ms, offset_ns);
 	return present_time_ns + offset_ns;
 }
 
@@ -148,6 +157,12 @@ pc_predict(struct u_pacing_compositor *upc,
 	*out_predicted_display_time_ns = predicted_display_time_ns;
 	*out_predicted_display_period_ns = predicted_display_period_ns;
 	*out_min_display_period_ns = min_display_period_ns;
+
+	printf("PC_PREDICT - frame_id: %" PRId64 "\n", frame_id);
+	printf("GPU comp_time: %" PRIu64 " ns\n", ft->comp_time_ns);
+	printf("Predicted Display Time: %" PRIu64 " ns\n", *out_predicted_display_time_ns);
+	printf("Predicted Display Period: %" PRIu64 " ns\n", *out_predicted_display_period_ns);
+	printf("Wake up time: %" PRIu64 " ns\n", *out_wake_up_time_ns);
 
 	if (!u_metrics_is_active()) {
 		return;
