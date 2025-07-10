@@ -75,6 +75,10 @@ public:
 		if (std::getenv("ILLIXR_COMPOSITOR_SLEEP_NS") != nullptr) {
 			sleep_time = std::stoull(std::getenv("ILLIXR_COMPOSITOR_SLEEP_NS"));
 		}
+
+		if (std::getenv("ILLIXR_COMPARE_IMAGES") != nullptr) {
+			compare_images = std::stoi(std::getenv("ILLIXR_COMPARE_IMAGES"));
+		}
 	}
 
 	std::atomic<bool> ready = false;
@@ -93,9 +97,11 @@ public:
 	std::shared_ptr<display_provider> ds;
 	switchboard::writer<switchboard::event_wrapper<time_point>> _m_vsync;
 
-	int pose_count = 0;
-	std::queue<fast_pose_type> last_poses;
 	fast_pose_type last_pose;
+
+	// Keep track of all poses that are rendered.
+	std::unordered_map<int64_t, std::vector<fast_pose_type>> rendered_poses;
+	bool compare_images = false;
 };
 
 static illixr_plugin *illixr_plugin_obj = nullptr;
@@ -124,7 +130,12 @@ illixr_read_pose(bool render, int64_t frame_id)
 	}
 
 	struct xrt_pose ret;
-	const fast_pose_type fast_pose = illixr_plugin_obj->sb_pose->get_fast_pose();
+	if (illixr_plugin_obj->compare_images) {
+	    const fast_pose_type fast_pose = illixr_plugin_obj->sb_pose->get_fake_render_pose();
+	} else {
+		const fast_pose_type fast_pose = illixr_plugin_obj->sb_pose->get_fast_pose();
+	}
+
 	const pose_type curr_pose = fast_pose.pose;
 	ret.orientation.x = curr_pose.orientation.x();
 	ret.orientation.y = curr_pose.orientation.y();
@@ -134,10 +145,8 @@ illixr_read_pose(bool render, int64_t frame_id)
 	ret.position.y = curr_pose.position.y();
 	ret.position.z = curr_pose.position.z();
 
-	
-	if (render && ++(illixr_plugin_obj->pose_count) % 1 == 0) {
-		illixr_plugin_obj->last_poses.push(fast_pose);
-		// std::cout << PREFIX << "Added one render pose" << std::endl;
+	if (render) {
+		illixr_plugin_obj->rendered_poses[frame_id].push_back(fast_pose);
 	}
 
 	return ret;
