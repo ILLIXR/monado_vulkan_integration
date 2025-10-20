@@ -183,10 +183,6 @@ if(XRT_HAVE_LINUX OR MINGW)
 endif()
 
 # ILLIXR
-set(ILLIXR_PATH
-		""
-		CACHE PATH "Path to ILLIXR headers"
-		)
 if(ILLIXR_PATH)
 	list(APPEND CMAKE_PREFIX_PATH "${CMAKE_INSTALL_PREFIX}/lib/cmake")
 endif()
