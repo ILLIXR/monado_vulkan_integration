@@ -12,7 +12,9 @@ project(
 if(POLICY CMP0072)
 	cmake_policy(SET CMP0072 NEW)
 endif()
-
+if(POLICY CMP0077)
+	cmake_policy(SET CMP0077 OLD)
+endif()
 set(_default_absolute ON)
 if(WIN32)
 	set(_default_absolute OFF)
