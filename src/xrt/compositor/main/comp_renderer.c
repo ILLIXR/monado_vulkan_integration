@@ -310,10 +310,13 @@ renderer_build_rendering(struct comp_renderer *r,
 	}
 
 	// ILLIXR: get pose from projection layer
-	struct comp_render_layer *layer;
+	struct comp_render_layer *layer = NULL;
 	for (int i = 0; i < r->lr->layer_count; i++) {
-		layer = r->lr->layers[i];
-		if (layer->type == XRT_LAYER_STEREO_PROJECTION || layer->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
+		struct comp_render_layer *cand = r->lr->layers[i];
+		if (!cand) continue;  // defensive
+		if (cand->type == XRT_LAYER_STEREO_PROJECTION ||
+		    cand->type == XRT_LAYER_STEREO_PROJECTION_DEPTH) {
+			layer = cand;
 			break;
 		}
 	}
@@ -578,7 +581,7 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 		// VkImageView buffers[2];
 		// buffers[0] = r->lr->framebuffers[0].view;
 		// buffers[1] = r->lr->framebuffers[1].view;
-		
+
 		// illixr_initialize_timewarp(r->rtr_array[0].render_pass, 0, buffers, 1);
 
 		// OpenWarp also wants the depth image view
@@ -597,7 +600,7 @@ renderer_ensure_images_and_renderings(struct comp_renderer *r, bool force_recrea
 		VkDeviceSize size[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
 		VkDeviceSize offset[2 * OFFLOAD_BUFFER_POOL_SIZE * 2];
 
-		
+
 		for (int i = 0; i < 2 * OFFLOAD_BUFFER_POOL_SIZE; i++) {
 			images[2 * i] = r->lr->framebuffers[i].image;
 			image_view[2 * i] = r->lr->framebuffers[i].view;
