@@ -9,14 +9,23 @@
 
 #include <math.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <dlfcn.h>
-#include <alloca.h>
 #include <string>
 #include <sstream>
+
+// Platform-specific includes
+#ifdef _WIN32
+    #include <malloc.h>  // for alloca on Windows
+    #include <io.h>      // Windows I/O functions
+    // Windows doesn't have unistd.h or dlfcn.h
+    // Dynamic library loading is handled by ILLIXR::dynamic_lib
+#else
+    #include <unistd.h>
+    #include <dlfcn.h>
+    #include <alloca.h>
+#endif
 
 #include "math/m_api.h"
 #include "xrt/xrt_device.h"
@@ -156,22 +165,39 @@ split(const std::string &s, char delimiter)
 	return tokens;
 }
 
+// Cross-platform helper to get environment variable safely
+static const char* get_env_safe(const char* name) {
+#ifdef _WIN32
+	// Windows: getenv is safe but consider using _dupenv_s for better security
+	static char buffer[32767]; // Max environment variable size on Windows
+	size_t size;
+	if (_dupenv_s(&buffer[0], &size, name) == 0 && size > 0) {
+		return buffer;
+	}
+	return nullptr;
+#else
+	return std::getenv(name);
+#endif
+}
+
 uint32_t get_server_width() {
-	if (std::getenv("ILLIXR_SERVER_WIDTH") == nullptr) {
+	const char* env_val = get_env_safe("ILLIXR_SERVER_WIDTH");
+	if (env_val == nullptr) {
 		printf("[Monado] Display width not specified, defaulting to %d pixels.\n", ILLIXR::display_params::width_pixels);
 		return ILLIXR::display_params::width_pixels;
 	}
 	
-	return std::stoi(std::getenv("ILLIXR_SERVER_WIDTH"));
+	return std::stoi(env_val);
 }
 
 uint32_t get_server_height() {
-	if (std::getenv("ILLIXR_SERVER_HEIGHT") == nullptr) {
+	const char* env_val = get_env_safe("ILLIXR_SERVER_HEIGHT");
+	if (env_val == nullptr) {
 		printf("[Monado] Display height not specified, defaulting to %d pixels.\n", ILLIXR::display_params::height_pixels);
 		return ILLIXR::display_params::height_pixels;
 	}
 	
-	return std::stoi(std::getenv("ILLIXR_SERVER_HEIGHT"));
+	return std::stoi(env_val);
 }
 
 static int
@@ -200,8 +226,9 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 	dh->base.device_type = XRT_DEVICE_TYPE_HMD;
 
 	// Read framerate from environment variable
-	if (std::getenv("ILLIXR_OFFLOAD_RENDERING_FRAMERATE") != nullptr) {
-		dh->base.hmd->screens[0].nominal_frame_interval_ns = 1000000000 / std::stoi(std::getenv("ILLIXR_OFFLOAD_RENDERING_FRAMERATE"));
+	const char* framerate_env = get_env_safe("ILLIXR_OFFLOAD_RENDERING_FRAMERATE");
+	if (framerate_env != nullptr) {
+			dh->base.hmd->screens[0].nominal_frame_interval_ns = 1000000000 / std::stoi(std::getenv("ILLIXR_OFFLOAD_RENDERING_FRAMERATE"));
 	} else {
 		dh->base.hmd->screens[0].nominal_frame_interval_ns = 1000000000 / 90;
 	}
@@ -242,7 +269,8 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 
 	// Read ILLIXR_OVERSCAN from environment variable
 	float scale = 1.0f;
-	if (std::getenv("ILLIXR_OVERSCAN") != nullptr) {
+	const char* overscan_env = get_env_safe("ILLIXR_OVERSCAN");
+	if (overscan_env != nullptr) {
 		scale = std::stof(std::getenv("ILLIXR_OVERSCAN"));
 	}
 
