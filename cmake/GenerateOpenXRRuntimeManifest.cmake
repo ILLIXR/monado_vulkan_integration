@@ -123,4 +123,23 @@ function(generate_openxr_runtime_manifest_at_install)
     )
     configure_file("${_OXR_MANIFEST_SCRIPT}" "${_script}" @ONLY)
     install(SCRIPT "${_script}")
+
+    if(WIN32)    
+        # Register the runtime in HKEY_CURRENT_USER (no admin required)
+        install(CODE "
+            execute_process(
+                COMMAND reg add \"HKCU\\\\SOFTWARE\\\\Khronos\\\\OpenXR\\\\1\\\\AvailableRuntimes\" 
+                        /v \"${CMAKE_INSTALL_PREFIX}/${_script}\" 
+                        /t REG_DWORD 
+                        /d 0 
+                        /f
+                RESULT_VARIABLE REGISTRY_RESULT
+            )
+            if(NOT REGISTRY_RESULT EQUAL 0)
+                message(WARNING \"Failed to register OpenXR runtime in user registry.\")
+            else()
+                message(STATUS \"Successfully registered Monado OpenXR runtime in user registry.\")
+            endif()
+        ")
+    endif()
 endfunction()
