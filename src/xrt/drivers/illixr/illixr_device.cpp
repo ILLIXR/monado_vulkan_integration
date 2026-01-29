@@ -211,6 +211,8 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 	dh->base.destroy = illixr_hmd_destroy;
 	dh->base.name = XRT_DEVICE_GENERIC_HMD;
 	dh->base.device_type = XRT_DEVICE_TYPE_HMD;
+	dh->base.orientation_tracking_supported = true;
+	dh->base.position_tracking_supported = true;
 
 	// Read framerate from environment variable
 	if (std::getenv("ILLIXR_OFFLOAD_RENDERING_FRAMERATE") != nullptr) {
