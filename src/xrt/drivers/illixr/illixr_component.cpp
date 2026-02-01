@@ -27,6 +27,7 @@
 #include "illixr/phonebook.hpp"
 #include "illixr/switchboard.hpp"
 #include "illixr/data_format/pose_prediction.hpp"
+#include "illixr/data_format/hand_tracking.hpp"
 #include "illixr/vk/render_pass.hpp"
 #include "illixr/vk/display_provider.hpp"
 #include "illixr/vk/vulkan_objects.hpp"
@@ -36,6 +37,8 @@
 #include <mutex>
 #include <queue>
 #include <string>
+
+#include "illixr_component.h"
 
 using namespace ILLIXR;
 using namespace ILLIXR::vulkan;
@@ -65,6 +68,7 @@ public:
 		, sb_clock{phonebook_->lookup_impl<relative_clock>()}
 		, ds{std::make_shared<monado_vulkan_display_provider>()}
 		, _m_vsync{sb->get_writer<switchboard::event_wrapper<time_point>>("vsync_estimate")}
+		, hand_tracking_reader_{sb->get_reader<hand_tracking_data>("hand_tracking")}
 	{
 		sb_timewarp = pb_->lookup_impl<timewarp>();
 
@@ -75,12 +79,25 @@ public:
 		if (std::getenv("ILLIXR_COMPOSITOR_SLEEP_NS") != nullptr) {
 			sleep_time = std::stoi(std::getenv("ILLIXR_COMPOSITOR_SLEEP_NS"));
 		}
+
+		// Check if hand tracking is enabled
+		if (std::getenv("ILLIXR_USE_HAND_TRACKING") != nullptr) {
+			std::string val = std::getenv("ILLIXR_USE_HAND_TRACKING");
+			hand_tracking_enabled_ = (val == "1" || val == "true" || val == "TRUE");
+		} else {
+			// Default to enabled if offloading frames
+			hand_tracking_enabled_ = offload_frames;
+		}
+
+		std::cout << PREFIX << "Hand tracking " 
+		          << (hand_tracking_enabled_ ? "enabled" : "disabled") << std::endl;
 	}
 
 	std::atomic<bool> ready = false;
 	
 	bool offload_frames = false;
 	int sleep_time = -1;
+	bool hand_tracking_enabled_ = false;
 
 	phonebook *pb;
 	const std::shared_ptr<switchboard> sb;
@@ -91,6 +108,9 @@ public:
 
 	std::shared_ptr<display_provider> ds;
 	switchboard::writer<switchboard::event_wrapper<time_point>> _m_vsync;
+
+	// Hand tracking reader
+	switchboard::reader<hand_tracking_data> hand_tracking_reader_;
 
 	pose_type last_pose;
 };
@@ -132,6 +152,133 @@ illixr_read_pose()
 
 	return ret;
 }
+
+/*
+ *
+ * Hand tracking functions
+ *
+ */
+
+extern "C" bool
+illixr_hand_tracking_supported(void)
+{
+	if (!illixr_plugin_obj) {
+		return false;
+	}
+	return illixr_plugin_obj->hand_tracking_enabled_;
+}
+
+/**
+ * @brief Convert ILLIXR hand_joint_pose to illixr_hand_joint
+ */
+static void
+convert_joint(const hand_joint_pose& src, struct illixr_hand_joint* dst)
+{
+	dst->position.x = src.position.x();
+	dst->position.y = src.position.y();
+	dst->position.z = src.position.z();
+
+	dst->orientation.x = src.orientation.x();
+	dst->orientation.y = src.orientation.y();
+	dst->orientation.z = src.orientation.z();
+	dst->orientation.w = src.orientation.w();
+
+	dst->radius = src.radius;
+
+	dst->linear_velocity.x = src.linear_velocity.x();
+	dst->linear_velocity.y = src.linear_velocity.y();
+	dst->linear_velocity.z = src.linear_velocity.z();
+
+	dst->angular_velocity.x = src.angular_velocity.x();
+	dst->angular_velocity.y = src.angular_velocity.y();
+	dst->angular_velocity.z = src.angular_velocity.z();
+
+	dst->location_flags = src.location_flags;
+}
+
+/**
+ * @brief Convert ILLIXR single_hand_state to illixr_single_hand
+ */
+static void
+convert_single_hand(const single_hand_state& src, struct illixr_single_hand* dst)
+{
+	dst->is_active = src.is_active;
+	dst->confidence = src.confidence;
+
+	for (size_t i = 0; i < HAND_JOINT_COUNT && i < ILLIXR_HAND_JOINT_COUNT; ++i) {
+		convert_joint(src.joints[i], &dst->joints[i]);
+	}
+}
+
+extern "C" bool
+illixr_read_hand_tracking(struct illixr_hand_tracking_data *out_data)
+{
+	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	assert(out_data && "out_data must not be null.");
+
+	if (!illixr_plugin_obj->hand_tracking_enabled_) {
+		out_data->valid = false;
+		return false;
+	}
+
+	// Try to get hand tracking data from switchboard
+	std::shared_ptr<const hand_tracking_data> hand_data = 
+		illixr_plugin_obj->hand_tracking_reader_.get_ro_nullable();
+
+	if (!hand_data || !hand_data->has_any_tracking()) {
+		out_data->valid = false;
+		out_data->left_hand.is_active = false;
+		out_data->right_hand.is_active = false;
+		return false;
+	}
+
+	// Convert left hand
+	convert_single_hand(hand_data->left_hand, &out_data->left_hand);
+
+	// Convert right hand
+	convert_single_hand(hand_data->right_hand, &out_data->right_hand);
+
+	out_data->valid = true;
+	return true;
+}
+
+extern "C" bool
+illixr_read_single_hand(int hand, struct illixr_single_hand *out_hand)
+{
+	assert(illixr_plugin_obj && "illixr_plugin_obj must be initialized first.");
+	assert(out_hand && "out_hand must not be null.");
+	assert(hand == 0 || hand == 1 && "hand must be 0 (left) or 1 (right).");
+
+	if (!illixr_plugin_obj->hand_tracking_enabled_) {
+		out_hand->is_active = false;
+		return false;
+	}
+
+	// Try to get hand tracking data from switchboard
+	std::shared_ptr<const hand_tracking_data> hand_data = 
+		illixr_plugin_obj->hand_tracking_reader_.get_ro_nullable();
+
+	if (!hand_data) {
+		out_hand->is_active = false;
+		return false;
+	}
+
+	const single_hand_state& src = (hand == 0) ? hand_data->left_hand : hand_data->right_hand;
+
+	if (!src.is_active) {
+		out_hand->is_active = false;
+		return false;
+	}
+
+	convert_single_hand(src, out_hand);
+	return true;
+}
+
+/*
+ *
+ * Vulkan display service functions
+ *
+ */
 
 extern "C" void illixr_initialize_vulkan_display_service(VkInstance instance, VkPhysicalDevice physical_device,
                                                          VkDevice device, VkQueue queue, uint32_t queue_family_index,
