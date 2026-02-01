@@ -14,6 +14,7 @@
 #include <assert.h>
 #include <string>
 #include <sstream>
+#include <chrono>
 
 // Platform-specific includes
 #ifdef _WIN32
@@ -34,8 +35,13 @@
 #include "util/u_debug.h"
 #include "util/u_device.h"
 #include "util/u_time.h"
-#include "util/u_hand_tracking.h"
 #include "util/u_distortion_mesh.h"
+
+// Include os_time.h for timestamp utilities if available
+// This provides os_monotonic_get_ns() on supported platforms
+#ifdef XRT_HAVE_TIMESPEC
+#include "os/os_time.h"
+#endif
 
 #include "illixr_component.h"
 #include "illixr/dynamic_lib.hpp"
@@ -61,10 +67,34 @@ struct illixr_hmd
 	const char *comp;
 	ILLIXR::dynamic_lib *runtime_lib;
 	ILLIXR::runtime *runtime;
+
 	// Hand tracking support
 	bool hand_tracking_supported;
-	struct u_hand_tracking hand_tracking[2];  // [0] = left, [1] = right
 };
+
+
+/*
+ *
+ * Helper Functions
+ *
+ */
+
+/**
+ * @brief Get current monotonic time in nanoseconds (portable implementation)
+ */
+static uint64_t
+get_timestamp_ns(void)
+{
+#if defined(XRT_HAVE_TIMESPEC) && !defined(_WIN32)
+	// Use Monado's utility if available on non-Windows
+	return os_monotonic_get_ns();
+#else
+	// Portable fallback using C++ chrono
+	auto now = std::chrono::steady_clock::now();
+	auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch());
+	return static_cast<uint64_t>(ns.count());
+#endif
+}
 
 
 /*
@@ -249,11 +279,8 @@ illixr_hmd_get_hand_tracking(struct xrt_device *xdev,
 		convert_illixr_joint_to_xrt(&hand_data.joints[i], &out_value->values.hand_joint_set_default[i]);
 	}
 
-	// Set the hand tracking source
-	out_value->hand_tracking_source = XRT_HAND_TRACKING_SOURCE_COMPUTED;
-
-	// Return the current timestamp
-	*out_timestamp_ns = os_monotonic_get_ns();
+	// Return the current timestamp using portable helper
+	*out_timestamp_ns = get_timestamp_ns();
 
 	DH_DEBUG(dh, "Hand %s: active=%d, confidence=%.2f",
 	         hand_index == 0 ? "left" : "right",
@@ -423,10 +450,6 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 
 	if (dh->hand_tracking_supported) {
 		printf("[ILLIXR] Hand tracking enabled\n");
-
-		// Initialize hand tracking utilities
-		u_hand_tracking_init(&dh->hand_tracking[0], XRT_HAND_LEFT);
-		u_hand_tracking_init(&dh->hand_tracking[1], XRT_HAND_RIGHT);
 	} else {
 		printf("[ILLIXR] Hand tracking disabled\n");
 		dh->base.hand_tracking_supported = false;

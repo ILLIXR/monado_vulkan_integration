@@ -27,7 +27,7 @@
 #include "illixr/phonebook.hpp"
 #include "illixr/switchboard.hpp"
 #include "illixr/data_format/pose_prediction.hpp"
-#include "illixr/data_format/hand_tracking.hpp"
+#include "illixr/data_format/hand_tracking_data.hpp"
 #include "illixr/vk/render_pass.hpp"
 #include "illixr/vk/display_provider.hpp"
 #include "illixr/vk/vulkan_objects.hpp"
@@ -68,7 +68,7 @@ public:
 		, sb_clock{phonebook_->lookup_impl<relative_clock>()}
 		, ds{std::make_shared<monado_vulkan_display_provider>()}
 		, _m_vsync{sb->get_writer<switchboard::event_wrapper<time_point>>("vsync_estimate")}
-		, hand_tracking_reader_{sb->get_reader<hand_tracking_data>("hand_tracking")}
+		, hand_tracking_reader_{sb->get_reader<openxr::hand_tracking_data>("hand_tracking")}
 	{
 		sb_timewarp = pb_->lookup_impl<timewarp>();
 
@@ -110,19 +110,19 @@ public:
 	switchboard::writer<switchboard::event_wrapper<time_point>> _m_vsync;
 
 	// Hand tracking reader
-	switchboard::reader<hand_tracking_data> hand_tracking_reader_;
+	switchboard::reader<openxr::hand_tracking_data> hand_tracking_reader_;
 
 	pose_type last_pose;
 };
 
 static illixr_plugin *illixr_plugin_obj = nullptr;
 
-extern "C" plugin *
-illixr_monado_create_plugin(phonebook *phonebook_)
+extern "C" void *
+illixr_monado_create_plugin(void *pb)
 {
-	illixr_plugin_obj = new illixr_plugin{"illixr_plugin", phonebook_};
+	illixr_plugin_obj = new illixr_plugin{"illixr_plugin", static_cast<phonebook *>(pb)};
 	illixr_plugin_obj->start();
-	return illixr_plugin_obj;
+	return static_cast<void *>(illixr_plugin_obj);
 }
 
 extern "C" void illixr_monado_wait_for_init(void) {
@@ -172,7 +172,7 @@ illixr_hand_tracking_supported(void)
  * @brief Convert ILLIXR hand_joint_pose to illixr_hand_joint
  */
 static void
-convert_joint(const hand_joint_pose& src, struct illixr_hand_joint* dst)
+convert_joint(const openxr::hand_joint_pose& src, struct illixr_hand_joint* dst)
 {
 	dst->position.x = src.position.x();
 	dst->position.y = src.position.y();
@@ -200,12 +200,12 @@ convert_joint(const hand_joint_pose& src, struct illixr_hand_joint* dst)
  * @brief Convert ILLIXR single_hand_state to illixr_single_hand
  */
 static void
-convert_single_hand(const single_hand_state& src, struct illixr_single_hand* dst)
+convert_single_hand(const openxr::single_hand_state& src, struct illixr_single_hand* dst)
 {
 	dst->is_active = src.is_active;
 	dst->confidence = src.confidence;
 
-	for (size_t i = 0; i < HAND_JOINT_COUNT && i < ILLIXR_HAND_JOINT_COUNT; ++i) {
+	for (size_t i = 0; i < openxr::HAND_JOINT_COUNT && i < ILLIXR_HAND_JOINT_COUNT; ++i) {
 		convert_joint(src.joints[i], &dst->joints[i]);
 	}
 }
@@ -222,7 +222,7 @@ illixr_read_hand_tracking(struct illixr_hand_tracking_data *out_data)
 	}
 
 	// Try to get hand tracking data from switchboard
-	std::shared_ptr<const hand_tracking_data> hand_data =
+	std::shared_ptr<const openxr::hand_tracking_data> hand_data =
 		illixr_plugin_obj->hand_tracking_reader_.get_ro_nullable();
 
 	if (!hand_data || !hand_data->has_any_tracking()) {
@@ -255,7 +255,7 @@ illixr_read_single_hand(int hand, struct illixr_single_hand *out_hand)
 	}
 
 	// Try to get hand tracking data from the switchboard
-	std::shared_ptr<const hand_tracking_data> hand_data =
+	std::shared_ptr<const openxr::hand_tracking_data> hand_data =
 		illixr_plugin_obj->hand_tracking_reader_.get_ro_nullable();
 
 	if (!hand_data) {
@@ -263,7 +263,7 @@ illixr_read_single_hand(int hand, struct illixr_single_hand *out_hand)
 		return false;
 	}
 
-	const single_hand_state& src = (hand == 0) ? hand_data->left_hand : hand_data->right_hand;
+	const openxr::single_hand_state& src = (hand == 0) ? hand_data->left_hand : hand_data->right_hand;
 
 	if (!src.is_active) {
 		out_hand->is_active = false;
