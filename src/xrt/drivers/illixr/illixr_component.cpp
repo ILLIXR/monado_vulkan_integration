@@ -89,12 +89,12 @@ public:
 			hand_tracking_enabled_ = offload_frames;
 		}
 
-		std::cout << PREFIX << "Hand tracking " 
+		std::cout << PREFIX << "Hand tracking "
 		          << (hand_tracking_enabled_ ? "enabled" : "disabled") << std::endl;
 	}
 
 	std::atomic<bool> ready = false;
-	
+
 	bool offload_frames = false;
 	int sleep_time = -1;
 	bool hand_tracking_enabled_ = false;
@@ -155,7 +155,7 @@ illixr_read_pose()
 
 /*
  *
- * Hand tracking functions
+ * Hand-tracking functions
  *
  */
 
@@ -222,7 +222,7 @@ illixr_read_hand_tracking(struct illixr_hand_tracking_data *out_data)
 	}
 
 	// Try to get hand tracking data from switchboard
-	std::shared_ptr<const hand_tracking_data> hand_data = 
+	std::shared_ptr<const hand_tracking_data> hand_data =
 		illixr_plugin_obj->hand_tracking_reader_.get_ro_nullable();
 
 	if (!hand_data || !hand_data->has_any_tracking()) {
@@ -254,8 +254,8 @@ illixr_read_single_hand(int hand, struct illixr_single_hand *out_hand)
 		return false;
 	}
 
-	// Try to get hand tracking data from switchboard
-	std::shared_ptr<const hand_tracking_data> hand_data = 
+	// Try to get hand tracking data from the switchboard
+	std::shared_ptr<const hand_tracking_data> hand_data =
 		illixr_plugin_obj->hand_tracking_reader_.get_ro_nullable();
 
 	if (!hand_data) {

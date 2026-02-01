@@ -124,7 +124,8 @@ illixr_hmd_destroy(struct xrt_device *xdev)
 static void
 illixr_hmd_update_inputs(struct xrt_device *xdev)
 {
-	// Empty - poses are fetched on demand
+	// poses are fetched on demand
+	(void)xdev;
 }
 
 static void
@@ -133,6 +134,7 @@ illixr_hmd_get_tracked_pose(struct xrt_device *xdev,
                             uint64_t at_timestamp_ns,
                             struct xrt_space_relation *out_relation)
 {
+	(void)at_timestamp_ns;
 	struct illixr_hmd *dh = illixr_hmd(xdev);
 	if (name != XRT_INPUT_GENERIC_HEAD_POSE) {
 		DH_ERROR(dh, "unknown input name for head pose");
@@ -173,7 +175,7 @@ convert_illixr_joint_to_xrt(const struct illixr_hand_joint *src,
 
 	// Build relation flags from location_flags
 	enum xrt_space_relation_flags flags = (enum xrt_space_relation_flags)0;
-	
+
 	if (src->location_flags & 0x01) {  // Position valid
 		flags = (enum xrt_space_relation_flags)(flags | XRT_SPACE_RELATION_POSITION_VALID_BIT);
 	}
@@ -236,7 +238,7 @@ illixr_hmd_get_hand_tracking(struct xrt_device *xdev,
 		return;
 	}
 
-	// Set active state
+	// Set the active state
 	out_value->is_active = hand_data.is_active;
 	if (!hand_data.is_active) {
 		return;
@@ -289,7 +291,7 @@ uint32_t get_server_width() {
 		printf("[Monado] Display width not specified, defaulting to %d pixels.\n", ILLIXR::display_params::width_pixels);
 		return ILLIXR::display_params::width_pixels;
 	}
-	
+
 	return std::stoi(std::getenv("ILLIXR_SERVER_WIDTH"));
 }
 
@@ -298,7 +300,7 @@ uint32_t get_server_height() {
 		printf("[Monado] Display height not specified, defaulting to %d pixels.\n", ILLIXR::display_params::height_pixels);
 		return ILLIXR::display_params::height_pixels;
 	}
-	
+
 	return std::stoi(std::getenv("ILLIXR_SERVER_HEIGHT"));
 }
 
@@ -323,7 +325,7 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 	struct illixr_hmd *dh;
 	enum u_device_alloc_flags flags =
 	    (enum u_device_alloc_flags)(U_DEVICE_ALLOC_HMD | U_DEVICE_ALLOC_TRACKING_NONE);
-	
+
 	// Allocate with 3 inputs: head pose + left hand + right hand
 	dh = U_DEVICE_ALLOCATE(struct illixr_hmd, flags, 3, 0);
 	dh->base.update_inputs = illixr_hmd_update_inputs;
@@ -418,10 +420,10 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 
 	// Check if hand tracking is supported after runtime is initialized
 	dh->hand_tracking_supported = illixr_hand_tracking_supported();
-	
+
 	if (dh->hand_tracking_supported) {
 		printf("[ILLIXR] Hand tracking enabled\n");
-		
+
 		// Initialize hand tracking utilities
 		u_hand_tracking_init(&dh->hand_tracking[0], XRT_HAND_LEFT);
 		u_hand_tracking_init(&dh->hand_tracking[1], XRT_HAND_RIGHT);

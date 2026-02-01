@@ -98,7 +98,7 @@ illixr_read_pose(void);
 
 /*
  *
- * Hand tracking functions
+ * Hand-tracking functions
  *
  */
 
