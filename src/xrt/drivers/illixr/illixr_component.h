@@ -43,7 +43,7 @@ struct illixr_hand_joint {
     float radius;                   //!< Joint radius in meters
     struct xrt_vec3 linear_velocity;  //!< Linear velocity m/s
     struct xrt_vec3 angular_velocity; //!< Angular velocity rad/s
-    uint8_t location_flags;         //!< Tracking validity flags
+    uint32_t location_flags;         //!< Tracking validity flags
 };
 
 /**
@@ -105,6 +105,13 @@ illixr_read_pose(void);
 bool illixr_hand_tracking_supported(void);
 bool illixr_read_hand_tracking(struct illixr_hand_tracking_data *out_data);
 bool illixr_read_single_hand(int hand, struct illixr_single_hand *out_hand);
+
+/*
+ *
+ * Vulkan/display functions
+ *
+ */
+
 void illixr_initialize_vulkan_display_service(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device, VkQueue queue, uint32_t queue_family_index, struct u_string_list *enabled_instance_extensions, struct u_string_list *enabled_device_extensions);
 void illixr_initialize_timewarp(VkRenderPass render_pass, uint32_t subpass, VkExtent2D extent, VkImage* image, VkImageView* image_view, VkDeviceMemory* device_memory, VkDeviceSize* size, VkDeviceSize* offset, uint32_t num_buffers_per_eye);
 int8_t illixr_src_acquire();

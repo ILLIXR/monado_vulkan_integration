@@ -173,12 +173,20 @@ illixr_hmd_get_tracked_pose(struct xrt_device *xdev,
 
 	out_relation->pose = illixr_read_pose();
 	out_relation->relation_flags = (enum xrt_space_relation_flags)(
-	    XRT_SPACE_RELATION_ORIENTATION_VALID_BIT | XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT |
-	    XRT_SPACE_RELATION_POSITION_VALID_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT);
+	    XRT_SPACE_RELATION_ORIENTATION_VALID_BIT | 
+	    XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT |
+	    XRT_SPACE_RELATION_POSITION_VALID_BIT | 
+	    XRT_SPACE_RELATION_POSITION_TRACKED_BIT);
 }
 
 /**
  * @brief Convert illixr_hand_joint to xrt_hand_joint_value
+ * 
+ * OpenXR XrSpaceLocationFlags:
+ *   XR_SPACE_LOCATION_ORIENTATION_VALID_BIT  = 0x00000001
+ *   XR_SPACE_LOCATION_POSITION_VALID_BIT     = 0x00000002
+ *   XR_SPACE_LOCATION_ORIENTATION_TRACKED_BIT = 0x00000004
+ *   XR_SPACE_LOCATION_POSITION_TRACKED_BIT    = 0x00000008
  */
 static void
 convert_illixr_joint_to_xrt(const struct illixr_hand_joint *src,
@@ -194,7 +202,36 @@ convert_illixr_joint_to_xrt(const struct illixr_hand_joint *src,
 	dst->relation.pose.orientation.z = src->orientation.z;
 	dst->relation.pose.orientation.w = src->orientation.w;
 
-	// Velocities
+	// Radius
+	dst->radius = src->radius;
+
+	// Build relation flags from OpenXR-style location_flags
+	enum xrt_space_relation_flags flags = (enum xrt_space_relation_flags)0;
+
+	// OpenXR flag mapping (from XrSpaceLocationFlags)
+	if (src->location_flags & 0x01) {  // XR_SPACE_LOCATION_ORIENTATION_VALID_BIT
+		flags = (enum xrt_space_relation_flags)(flags | XRT_SPACE_RELATION_ORIENTATION_VALID_BIT);
+	}
+	if (src->location_flags & 0x02) {  // XR_SPACE_LOCATION_POSITION_VALID_BIT
+		flags = (enum xrt_space_relation_flags)(flags | XRT_SPACE_RELATION_POSITION_VALID_BIT);
+	}
+	if (src->location_flags & 0x04) {  // XR_SPACE_LOCATION_ORIENTATION_TRACKED_BIT
+		flags = (enum xrt_space_relation_flags)(flags | XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT);
+	}
+	if (src->location_flags & 0x08) {  // XR_SPACE_LOCATION_POSITION_TRACKED_BIT
+		flags = (enum xrt_space_relation_flags)(flags | XRT_SPACE_RELATION_POSITION_TRACKED_BIT);
+	}
+
+	// If no flags set but we have data, assume valid and tracked
+	if (flags == 0) {
+		flags = (enum xrt_space_relation_flags)(
+		    XRT_SPACE_RELATION_ORIENTATION_VALID_BIT |
+		    XRT_SPACE_RELATION_POSITION_VALID_BIT |
+		    XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT |
+		    XRT_SPACE_RELATION_POSITION_TRACKED_BIT);
+	}
+
+	// Velocities (if provided)
 	dst->relation.linear_velocity.x = src->linear_velocity.x;
 	dst->relation.linear_velocity.y = src->linear_velocity.y;
 	dst->relation.linear_velocity.z = src->linear_velocity.z;
@@ -203,32 +240,15 @@ convert_illixr_joint_to_xrt(const struct illixr_hand_joint *src,
 	dst->relation.angular_velocity.y = src->angular_velocity.y;
 	dst->relation.angular_velocity.z = src->angular_velocity.z;
 
-	// Build relation flags from location_flags
-	enum xrt_space_relation_flags flags = (enum xrt_space_relation_flags)0;
-
-	if (src->location_flags & 0x01) {  // Position valid
-		flags = (enum xrt_space_relation_flags)(flags | XRT_SPACE_RELATION_POSITION_VALID_BIT);
-	}
-	if (src->location_flags & 0x02) {  // Orientation valid
-		flags = (enum xrt_space_relation_flags)(flags | XRT_SPACE_RELATION_ORIENTATION_VALID_BIT);
-	}
-	if (src->location_flags & 0x04) {  // Linear velocity valid
+	// Check if velocities are non-zero, add flags
+	if (src->linear_velocity.x != 0 || src->linear_velocity.y != 0 || src->linear_velocity.z != 0) {
 		flags = (enum xrt_space_relation_flags)(flags | XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT);
 	}
-	if (src->location_flags & 0x08) {  // Angular velocity valid
+	if (src->angular_velocity.x != 0 || src->angular_velocity.y != 0 || src->angular_velocity.z != 0) {
 		flags = (enum xrt_space_relation_flags)(flags | XRT_SPACE_RELATION_ANGULAR_VELOCITY_VALID_BIT);
-	}
-	if (src->location_flags & 0x10) {  // Position tracked
-		flags = (enum xrt_space_relation_flags)(flags | XRT_SPACE_RELATION_POSITION_TRACKED_BIT);
-	}
-	if (src->location_flags & 0x20) {  // Orientation tracked
-		flags = (enum xrt_space_relation_flags)(flags | XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT);
 	}
 
 	dst->relation.relation_flags = flags;
-
-	// Radius
-	dst->radius = src->radius;
 }
 
 /**
@@ -241,22 +261,40 @@ illixr_hmd_get_hand_tracking(struct xrt_device *xdev,
                              struct xrt_hand_joint_set *out_value,
                              uint64_t *out_timestamp_ns)
 {
+	(void)desired_timestamp_ns;
 	struct illixr_hmd *dh = illixr_hmd(xdev);
+
+	// Debug: log that we're being called
+	static uint64_t call_count = 0;
+	call_count++;
 
 	// Determine which hand
 	int hand_index = -1;
+	const char *hand_name = "unknown";
+	
 	if (name == XRT_INPUT_GENERIC_HAND_TRACKING_LEFT) {
 		hand_index = 0;
+		hand_name = "left";
 	} else if (name == XRT_INPUT_GENERIC_HAND_TRACKING_RIGHT) {
 		hand_index = 1;
+		hand_name = "right";
 	} else {
 		DH_ERROR(dh, "unknown input name for hand tracking: %d", name);
 		out_value->is_active = false;
 		return;
 	}
 
+	// Log first few calls and then periodically
+	if (call_count <= 5 || call_count % 300 == 0) {
+		printf("[ILLIXR] get_hand_tracking called for %s hand (call #%llu)\n",
+		       hand_name, (unsigned long long)call_count);
+	}
+
 	// Check if hand tracking is supported
 	if (!dh->hand_tracking_supported) {
+		if (call_count <= 5) {
+			printf("[ILLIXR] Hand tracking not supported on device\n");
+		}
 		out_value->is_active = false;
 		return;
 	}
@@ -265,12 +303,18 @@ illixr_hmd_get_hand_tracking(struct xrt_device *xdev,
 	struct illixr_single_hand hand_data;
 	if (!illixr_read_single_hand(hand_index, &hand_data)) {
 		out_value->is_active = false;
+		if (call_count <= 5 || call_count % 300 == 0) {
+			printf("[ILLIXR] No hand data available for %s hand\n", hand_name);
+		}
 		return;
 	}
 
 	// Set the active state
 	out_value->is_active = hand_data.is_active;
 	if (!hand_data.is_active) {
+		if (call_count <= 5 || call_count % 300 == 0) {
+			printf("[ILLIXR] %s hand not active\n", hand_name);
+		}
 		return;
 	}
 
@@ -282,10 +326,14 @@ illixr_hmd_get_hand_tracking(struct xrt_device *xdev,
 	// Return the current timestamp using portable helper
 	*out_timestamp_ns = get_timestamp_ns();
 
-	DH_DEBUG(dh, "Hand %s: active=%d, confidence=%.2f",
-	         hand_index == 0 ? "left" : "right",
-	         hand_data.is_active,
-	         hand_data.confidence);
+	// Log success periodically
+	if (call_count <= 5 || call_count % 300 == 0) {
+		printf("[ILLIXR] %s hand: ACTIVE, confidence=%.2f, wrist=(%.3f, %.3f, %.3f)\n",
+		       hand_name, hand_data.confidence,
+		       hand_data.joints[1].position.x,
+		       hand_data.joints[1].position.y,
+		       hand_data.joints[1].position.z);
+	}
 }
 
 static void
@@ -445,15 +493,40 @@ illixr_hmd_create(const char *path_in, const char *comp_in)
 		return NULL;
 	}
 
-	// Check if hand tracking is supported after runtime is initialized
-	dh->hand_tracking_supported = illixr_hand_tracking_supported();
-
-	if (dh->hand_tracking_supported) {
-		printf("[ILLIXR] Hand tracking enabled\n");
+	// Check environment variables directly for hand tracking support
+	// We can't rely on illixr_hand_tracking_supported() here because the plugin
+	// may not be fully initialized yet (load_plugin_factory registers but may not call)
+	bool ht_enabled = false;
+	
+	// Check ILLIXR_USE_HAND_TRACKING first
+	const char* ht_env = std::getenv("ILLIXR_USE_HAND_TRACKING");
+	if (ht_env != nullptr) {
+		std::string val(ht_env);
+		ht_enabled = (val == "1" || val == "true" || val == "TRUE" || val == "yes" || val == "YES");
 	} else {
-		printf("[ILLIXR] Hand tracking disabled\n");
-		dh->base.hand_tracking_supported = false;
+		// Fall back to ILLIXR_OFFLOAD_FRAMES
+		const char* offload_env = std::getenv("ILLIXR_OFFLOAD_FRAMES");
+		if (offload_env != nullptr) {
+			ht_enabled = (std::stoi(offload_env) != 0);
+		}
 	}
+	
+	dh->hand_tracking_supported = ht_enabled;
+	dh->base.hand_tracking_supported = ht_enabled;
+
+	printf("[ILLIXR] ==========================================\n");
+	printf("[ILLIXR] HMD device created successfully\n");
+	printf("[ILLIXR]   ILLIXR_USE_HAND_TRACKING=%s\n", 
+	       std::getenv("ILLIXR_USE_HAND_TRACKING") ? std::getenv("ILLIXR_USE_HAND_TRACKING") : "(not set)");
+	printf("[ILLIXR]   ILLIXR_OFFLOAD_FRAMES=%s\n",
+	       std::getenv("ILLIXR_OFFLOAD_FRAMES") ? std::getenv("ILLIXR_OFFLOAD_FRAMES") : "(not set)");
+	printf("[ILLIXR]   Hand tracking: %s\n", 
+	       dh->hand_tracking_supported ? "ENABLED" : "DISABLED");
+	printf("[ILLIXR]   get_hand_tracking callback: %p\n", 
+	       (void*)dh->base.get_hand_tracking);
+	printf("[ILLIXR]   hand_tracking_supported flag: %d\n",
+	       dh->base.hand_tracking_supported);
+	printf("[ILLIXR] ==========================================\n");
 
 	return &dh->base;
 }
